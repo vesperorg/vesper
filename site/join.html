@@ -127,6 +127,7 @@
     <div class="eyebrow">Running a node</div>
     <h2 class="measure">Testnet-1: what it is and how to join.</h2>
     <p class="measure"><b>What it is.</b> A real Vesper network with test coins, tVESP, whose addresses start <span class="mono">tvsp2</span>. They have no value and never will; a real network, if there is one, gets its own genesis, ticker and addresses. Ring size 32. The genesis block was made by <code>launch_genesis.py</code>: its message names the newest Bitcoin block at the launch moment (two block explorers had to agree) and the launch time, so nobody could have mined before it; the exact Bitcoin block and the genesis ID are in <code>README.md</code> and printed by <code>python coin.py info</code>, and every node checks them. Starting difficulty 4,096 tries, from measured test mining.</p>
+    <p class="measure"><b>First time at any of this?</b> <a href="https://github.com/vesperorg/vesper/blob/master/START_HERE.md">START_HERE.md</a> in the repository walks you through it in nine numbered steps, from installing Python to paying someone and trying to break it, in about 15 minutes.</p>
     <p class="measure"><b>How to join.</b> Python 3.10 or newer, two packages, and one command. The node has per-address limits, bans, connection timeouts and a peer table built for strangers; testnet-1 is where they meet real ones for the first time.</p>
 <pre>git clone https://github.com/vesperorg/vesper
 cd vesper
