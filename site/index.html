@@ -156,7 +156,7 @@
     <div class="phases">
       <div class="phase done"><div class="st">Nothing to see</div><h3>No address, no amount, no sender. Ever.</h3><p>Not hidden behind a setting most people never turn on, as on Zcash. Hidden for everyone, on every payment, with no transparent kind of transaction to leak from.</p></div>
       <div class="phase done"><div class="st">Twice Monero's crowd</div><h3>Every spend hides among 32 coins.</h3><p>Monero uses 16. Vesper's decoys are drawn from how people really spend, and the leak is measured in public: an informed attacker names the real coin 3.0% of the time, where 3.1% would be perfect.</p></div>
-      <div class="phase done"><div class="st">Private, not unaccountable</div><h3>Prove your own history, to whom you choose.</h3><p>A view key shows an accountant everything of yours and lets them spend nothing. A payment proof shows one payment to one person and nothing else. The part Monero never made comfortable.</p></div>
+      <div class="phase done"><div class="st">Private, not unaccountable</div><h3>Prove your own history, to whom you choose.</h3><p>A view key shows an accountant everything of yours and lets them spend nothing. A payment proof shows one payment to one person and nothing else. Both built in, one command each.</p></div>
       <div class="phase done"><div class="st">Measured, not promised</div><h3>Every claim ships with a test.</h3><p>44 checks run in public on every change, a page lists every known weakness, and the network leak has a number, not an adjective. Privacy that is attacked in the open is the only kind worth trusting.</p></div>
     </div>
   </div>
@@ -240,7 +240,7 @@
     <div class="measure" style="margin-top:26px">
       <p>The whole trick is two lines of arithmetic on an elliptic curve. The sender computes the one-time key from Bob's public keys <span class="mono">D</span> and <span class="mono">C</span>; Bob recomputes it from his private view key, because <span class="mono">a&middot;R</span> equals <span class="mono">r&middot;C</span>. Spending needs the private spend key as well.</p>
       <div class="formula">P = H(r&middot;C)&middot;G + D &nbsp;&nbsp;&nbsp; <span class="muted">(sender builds the one-time key)</span><br>x = H(a&middot;R) + b + m &nbsp;&nbsp;&nbsp;&nbsp; <span class="muted">(only Bob can derive the key that spends it; m is the per-address offset, 0 for his first address)</span></div>
-      <p>Give someone <span class="mono">a</span> and <span class="mono">B</span> and they can list your incoming payments forever and never move a coin. That is the view key, and it is the part Monero never made comfortable.</p>
+      <p>Give someone <span class="mono">a</span> and <span class="mono">B</span> and they can list your incoming payments forever and never move a coin. That is the view key. Monero has one too; Vesper makes it, and the one-payment receipt, a first-class tool rather than an afterthought.</p>
     </div>
 
     <div class="viewer" id="viewer">
