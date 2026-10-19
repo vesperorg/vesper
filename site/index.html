@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vesper</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: dusk-sky editorial. One wide hero with a drawn evening sky, then a 68ch reading column; data and keys in mono. Dark-first (Vesper is the evening star). */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a; --ink-on-accent: #1a1300;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+  .measure { max-width: 68ch; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; font-variation-settings: "opsz" 144; }
+  h2 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; margin-bottom: 14px; }
+  h3 { font-size: 21px; margin-bottom: 8px; }
+  p { margin: 0 0 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+
+  /* hero */
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hero .wrap { position: relative; padding-block: clamp(64px, 12vw, 140px) 56px; }
+  .hero p.lede { font-size: clamp(18px, 2.2vw, 22px); max-width: 60ch; color: var(--fg); margin-top: 22px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 70%, transparent); font-family: var(--mono); font-size: 12.5px; }
+  .pill i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: var(--muted); }
+  .pill.on i { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .pill.next i { background: var(--accent); }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .btn { display: inline-block; padding: 12px 18px; border-radius: 10px; font-weight: 600; text-decoration: none; background: var(--accent); color: var(--ink-on-accent); }
+  .btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+
+  section { padding-block: clamp(48px, 7vw, 88px); border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+
+  /* comparison */
+  .tablewrap { overflow-x: auto; margin-top: 22px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
+  th, td { text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td:first-child { font-weight: 600; }
+  td.v { color: var(--accent); font-weight: 600; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* walkthrough */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 24px; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .step .who { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 8px; }
+  .step p { font-size: 15.5px; margin-bottom: 10px; }
+  .key { font-family: var(--mono); font-size: 12.5px; word-break: break-all; background: var(--surface2); border-radius: 8px; padding: 8px 10px; color: var(--fg); }
+  .key b { color: var(--accent); font-weight: 500; }
+  .formula { font-family: var(--mono); font-size: 15px; background: var(--surface2); border-left: 3px solid var(--accent); padding: 12px 14px; border-radius: 0 10px 10px 0; margin: 16px 0; overflow-x: auto; }
+
+  /* viewer toggle */
+  .viewer { margin-top: 26px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; }
+  .tab[aria-selected="true"] { background: var(--accent); color: var(--ink-on-accent); border-color: var(--accent); }
+  .tab:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+  .txcard { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 760px) { .txcard { grid-template-columns: 1fr 1fr; } }
+  .txcol { min-width: 0; background: var(--surface2); border-radius: 12px; padding: 14px; }
+  .txcol h4 { margin: 0 0 10px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px dashed var(--line); font-family: var(--mono); font-size: 13px; }
+  .row:first-of-type { border-top: 0; }
+  .row .k { word-break: break-all; min-width: 0; }
+  .row .a { white-space: nowrap; color: var(--muted); }
+  .row.mine .k { color: var(--ok); }
+  .row.mine .a { color: var(--ok); }
+  .verdict { margin-top: 14px; font-size: 15px; padding: 12px 14px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--line); }
+
+  /* roadmap */
+  .phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 22px; }
+  .phase { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .phase .st { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .phase.done .st { color: var(--ok); } .phase.next .st { color: var(--accent); } .phase.later .st { color: var(--muted); }
+  .phase p { font-size: 15px; margin: 0; color: var(--muted); }
+  .phase h3 { font-size: 19px; }
+
+  /* speed */
+  .speed { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 22px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .tile .big { font-family: var(--display); font-size: 36px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .tile .big small { font-family: var(--mono); font-size: 14px; color: var(--muted); margin-left: 4px; }
+  .tile .lab { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  /* notice + run */
+  .notice { background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; padding: 20px 22px; margin-top: 10px; }
+  ol.run { padding-left: 22px; margin: 18px 0 0; }
+  ol.run li { margin-bottom: 10px; }
+  pre { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; margin: 14px 0 0; }
+  footer { padding-block: 40px 56px; color: var(--muted); font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { .hero canvas { display: none; } }
+</style>
+
+<div class="hero">
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="eyebrow">Vesper &middot; VESP &middot; the evening-star coin</div>
+    <h1>Private by default.<br>Provable on demand.</h1>
+    <p class="lede">Vesper is a blockchain where no transaction ever names who paid or who was paid. Every payment lands at a one-time key only its owner can recognise, its amount is sealed so the chain can check the books without reading them, and its sender is hidden among 32 possible spenders. And if you ever need to prove your own history, to an accountant or a court, a view key shows yours and nobody else's.</p>
+    <div class="pills">
+      <span class="pill on"><i></i>Receivers hidden</span>
+      <span class="pill on"><i></i>Amounts hidden</span>
+      <span class="pill on"><i></i>Senders hidden in a ring of 32</span>
+      <span class="pill on"><i></i>Network: the first broadcast is not the sender's</span>
+      <span class="pill on"><i></i>Addresses on chain: none, ever</span>
+      <span class="pill next"><i></i>Testnet-1: test coins, no value, launching</span>
+    </div>
+    <div class="ctas">
+      <a class="btn" href="#how">How a payment hides</a>
+      <a class="btn ghost" href="launch.html">Launch plan: fair launch, no presale</a>
+      <a class="btn ghost" href="whitepaper.html">Whitepaper and threat model</a>
+      <a class="btn ghost" href="testdrive.html">Test drive: send to another person</a>
+      <a class="btn ghost" href="join.html">Join Vesper</a>
+      <a class="btn ghost" href="breaking.html">Breaking Vesper: known weaknesses</a>
+      <a class="btn ghost" href="#run">Run it on your PC</a>
+    </div>
+  </div>
+</div>
+
+<section id="why">
+  <div class="wrap">
+    <div class="measure">
+      <div class="eyebrow">Why it exists</div>
+      <h2>Most blockchains are the most public ledger ever built.</h2>
+      <p>On Bitcoin and Ethereum every payment is written down forever, in the open, with both addresses attached. Give an analyst one address and they can walk your whole financial life: who pays you, who you pay, how much, when. Companies sell exactly that service.</p>
+      <p>Two coins fixed it, each with a flaw. <strong>Monero</strong> hides the sender in a ring of 16, the real output and 15 decoys, a small crowd that statistics have cracked before. <strong>Zcash</strong> has stronger math but made privacy optional, so almost nobody used it and the chain leaked anyway. Both still reveal which computer first announced a transaction.</p>
+      <p>Vesper is a learning chain that takes the best idea from each, adds the two things they lack, and is written in a few thousand lines of Python, with libsodium doing the curve arithmetic, so you can read every trick line by line.</p>
+    </div>
+  </div>
+</section>
+
+<section id="different">
+  <div class="wrap">
+    <div class="eyebrow">What is different</div>
+    <h2 class="measure">Six commitments, side by side.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Commitment</th><th>Monero</th><th>Zcash</th><th>Vesper</th></tr></thead>
+        <tbody>
+          <tr><td>Privacy is mandatory</td><td>Yes</td><td>No, optional, and most people skipped it</td><td class="v">Yes. There is no transparent transaction type.</td></tr>
+          <tr><td>Receiver hidden</td><td>Stealth addresses</td><td>Shielded addresses</td><td class="v">Stealth addresses, done</td></tr>
+          <tr><td>Amount hidden</td><td>Yes (RingCT)</td><td>Yes</td><td class="v">Yes, done: commitments the chain checks without reading, with range proofs</td></tr>
+          <tr><td>Sender hidden</td><td>Ring of 16: the real output and 15 decoys</td><td>Zero-knowledge proof over the shielded pool</td><td class="v">Hidden in a ring of 32 today, twice Monero's: an attacker who knows how people spend names the real coin 3.0% of the time, where 3.1% is fair. Hiding among every output on the chain is the research target, not a promise.</td></tr>
+          <tr><td>Prove your own history</td><td>View key, incoming only</td><td>Viewing keys</td><td class="v">View keys from day one: see everything of yours, spend nothing. Payment proofs for one payment at a time.</td></tr>
+          <tr><td>Network layer</td><td>Dandelion++</td><td>None built in</td><td class="v">Dandelion++-style stem relay, built; the leak is measured and published (an attacker with 10% of nodes names the sender's node 11% of the time); Tor with one flag</td></tr>
+          <tr><td>Mining</td><td>RandomX: favours CPUs, hostile to mining chips</td><td>Equihash: graphics cards and chips</td><td class="v">Argon2id, memory-hard, hostile to Bitcoin's chips; an interim choice, RandomX likely for production</td></tr>
+          <tr><td>Can a person read the code?</td><td>Hundreds of thousands of lines of C++</td><td>Rust, Halo 2</td><td class="v">A few thousand lines of Python written to be read</td></tr>
+          <tr><td>Speed budget</td><td>Large transactions</td><td>Proofs take seconds to create</td><td class="v">Every phase reports milliseconds; the rule is nobody waits</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow">How a payment hides</div>
+    <h2 class="measure">As many addresses as you like, a new key every time.</h2>
+    <p class="measure">A Vesper address is two public keys made from two secret numbers, and one wallet hands out as many addresses as it likes, none linkable to another. The values below are from a real run of <code>demo.py</code> on node v0.9.0 at testnet-1 settings.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="who">1 &middot; Bob publishes an address</div>
+        <p>Two secret numbers on his PC, as many addresses as he likes. His first, and one he hands only to Carol: they share no key, and both pay into the same wallet.</p>
+        <div class="key">tvsp2BrctjexB79KJMX1chV8TumT&hellip;FfzDtCBA<br>tvsp2UPS8mvLREWroWLLcXiH1fFx&hellip;paPFCNAb</div>
+      </div>
+      <div class="step">
+        <div class="who">2 &middot; Alice pays him twice</div>
+        <p>Each payment draws a fresh secret, publishes its own <span class="mono">R</span>, and lands at a fresh key with a sealed amount. Two payments of 5 tVESP to the same person: nothing in common.</p>
+        <div class="key">key <b>68ca195ef35e03d5dd68f017&hellip;</b><br>sealed amount <b>cef674c062aa6d8c&hellip;</b></div>
+        <div class="key" style="margin-top:6px">key <b>e3b09ebac0c7e2e5642f1090&hellip;</b><br>sealed amount <b>b801cb38eafe0bcf&hellip;</b></div>
+      </div>
+      <div class="step">
+        <div class="who">3 &middot; Eve scans the chain</div>
+        <p>She has her own keys and all the time in the world. She recomputes the test for every output.</p>
+        <div class="key">payment 1 is Eve's? <b>False</b><br>payment 2 is Eve's? <b>False</b></div>
+      </div>
+      <div class="step">
+        <div class="who">4 &middot; Bob, and his accountant</div>
+        <p>Bob's view key finds both instantly. His accountant, holding only the view key, sees the same two payments and can spend neither.</p>
+        <div class="key">accountant sees payment 1: <b>True</b><br>accountant sees payment 2: <b>True</b><br>accountant can spend: <b>False</b></div>
+      </div>
+    </div>
+    <div class="measure" style="margin-top:26px">
+      <p>The whole trick is two lines of arithmetic on an elliptic curve. The sender computes the one-time key from Bob's public keys <span class="mono">D</span> and <span class="mono">C</span>; Bob recomputes it from his private view key, because <span class="mono">a&middot;R</span> equals <span class="mono">r&middot;C</span>. Spending needs the private spend key as well.</p>
+      <div class="formula">P = H(r&middot;C)&middot;G + D &nbsp;&nbsp;&nbsp; <span class="muted">(sender builds the one-time key)</span><br>x = H(a&middot;R) + b + m &nbsp;&nbsp;&nbsp;&nbsp; <span class="muted">(only Bob can derive the key that spends it; m is the per-address offset, 0 for his first address)</span></div>
+      <p>Give someone <span class="mono">a</span> and <span class="mono">B</span> and they can list your incoming payments forever and never move a coin. That is the view key, and it is the part Monero never made comfortable.</p>
+    </div>
+
+    <div class="viewer" id="viewer">
+      <h3>What each person sees in one transaction</h3>
+      <p class="muted" style="font-size:15px">Alice pays Bob 12.5 VESP from a 50 VESP mining reward (keys from the recorded test drive). Switch viewpoints.</p>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-view="stranger" id="tab-stranger">A stranger</button>
+        <button class="tab" role="tab" aria-selected="false" data-view="accountant" id="tab-accountant">Bob's accountant (view key)</button>
+        <button class="tab" role="tab" aria-selected="false" data-view="bob" id="tab-bob">Bob (spend key)</button>
+      </div>
+      <div class="txcard">
+        <div class="txcol">
+          <h4>Input: one of 32 outputs, unknown which</h4>
+          <div class="row"><span class="k">ring of 32 existing outputs, sorted; the real one is among them</span><span class="a">sealed</span></div>
+          <div class="row"><span class="k">key image 79547d2a8209&hellip; a one-way spent marker: seen twice means double spend</span><span class="a"></span></div>
+          <div class="row"><span class="k muted">one ring signature: proves the signer owns one of the 32, not which</span><span class="a">1,152 bytes</span></div>
+        </div>
+        <div class="txcol">
+          <h4>Outputs: one-time keys, sealed amounts</h4>
+          <div class="row" id="out0"><span class="k">#0 &nbsp;b6e38e6d9ab5&hellip;</span><span class="a" id="amt0">sealed</span></div>
+          <div class="row" id="out1"><span class="k">#1 &nbsp;fa6ba22488df&hellip;</span><span class="a" id="amt1">sealed</span></div>
+          <div class="row"><span class="k muted">fee</span><span class="a">0.00001 VESP</span></div>
+          <div class="row"><span class="k muted">range proof, one for both outputs</span><span class="a">736 bytes</span></div>
+        </div>
+      </div>
+      <div class="verdict" id="verdict">Someone spent one of 32 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 32 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 32 is twice Monero's, not the whole chain.</div>
+    </div>
+  </div>
+</section>
+
+<section id="speed">
+  <div class="wrap">
+    <div class="eyebrow">Speed, measured</div>
+    <h2 class="measure">Privacy that nobody waits for.</h2>
+    <p class="measure">Measured on an ordinary laptop with receivers, amounts and senders all hidden: Python with libsodium doing the curve arithmetic. Numbers from the self-test.</p>
+    <div class="speed">
+      <div class="tile"><div class="big">54<small>ms</small></div><div class="lab">for a node to accept a payment at a ring of 32: ring signature, spent marker and one joint range proof checked (45 ms at 16)</div></div>
+      <div class="tile"><div class="big">23<small>ms</small></div><div class="lab">per payment when a fresh node validates a block of 20 (15.1 ms at a ring of 16)</div></div>
+      <div class="tile"><div class="big">15<small>ms</small></div><div class="lab">for a wallet to re-check when nothing is new: it reads only new blocks, never the whole chain</div></div>
+      <div class="tile"><div class="big">204<small>ms</small></div><div class="lab">for the sender to build a payment, once</div></div>
+      <div class="tile"><div class="big">3.1<small>kB</small></div><div class="lab">per payment in binary (7.3 kB as JSON): 1,152 bytes of ring signature for a ring of 32, one 736-byte range proof</div></div>
+      <div class="tile"><div class="big">90<small>tries/s</small></div><div class="lab">mining per laptop core, 300 to 420 on eight: Argon2id with 32 MB per try; 11 ms to check a block's work</div></div>
+    </div>
+    <p class="measure muted" style="margin-top:18px;font-size:15px">Each layer has a price on the node: about 4 ms per payment with only receivers hidden, 8.4 with amounts sealed, 18.6 with senders hidden in a ring of 16, back to 15.1 with one joint range proof per payment, and 23 at the ring of 32 the testnet runs. Ring signatures cannot be batch-checked, which is one reason the research target matters: a proof of membership among every output has to beat the ring's per-input cost to ship.</p>
+  </div>
+</section>
+
+<section id="roadmap">
+  <div class="wrap">
+    <div class="eyebrow">Roadmap</div>
+    <h2 class="measure">What is hidden, phase by phase.</h2>
+    <div class="phases">
+      <div class="phase done"><div class="st">Done</div><h3>1. Stealth addresses and view keys</h3><p>No address ever appears on the chain. Wallets find their coins by scanning. View keys audit without spending.</p></div>
+      <div class="phase done"><div class="st">Done</div><h3>2. Hidden amounts</h3><p>Amounts are sealed in commitments with one 736-byte range proof per payment, batch-checked per block. Nodes prove inputs equal outputs and nothing is negative without seeing a number. Every payment has at least two shuffled outputs.</p></div>
+      <div class="phase done"><div class="st">Done, stage one</div><h3>3. Hidden senders</h3><p>Every input is signed as one of a ring of 32 outputs, twice Monero's, with a one-way spent marker that makes double spends impossible without ever naming the output. Monero's strength. Stage two, hiding among every output on the chain, is research with no design chosen yet. 44 self-test checks across all phases.</p></div>
+      <div class="phase done"><div class="st">Done, measured</div><h3>4. Network privacy</h3><p>A payment travels quietly from node to node before anyone broadcasts it, so the first announcer is a relay, not the sender. Measured in a 200-node simulation: an attacker with 10% of the nodes names the sender's node 11% of the time, 25% without the stem. Nothing between nodes is encrypted; one flag sends everything through Tor.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="honest">
+  <div class="wrap">
+    <div class="measure">
+      <div class="eyebrow">Read this</div>
+      <h2>A learning chain. Not money.</h2>
+      <div class="notice">
+        <p>Vesper has no value, is not listed anywhere, and never will be. Testnet-1's tVESP are test coins, worth nothing by design. It exists so a person can read exactly how private money works and then try to do it better.</p>
+        <p>Homemade privacy cryptography is unaudited. The real projects spent years and several audits getting this right, and their first versions still had traceability bugs. If you want private money for real, use Monero.</p>
+        <p style="margin:0">What the chain still shows an observer today, stated plainly: that the sender is one of 32 outputs rather than one of all of them (an attacker who knows how people spend names the real one 3.0% of the time; fair would be 3.1%), the fee, the amount of each mining reward, the count and size of inputs and outputs, and that the outputs of one payment belong together. Off the chain, the first broadcast of your payment comes from a relay rather than your node, but an attacker running a share of the nodes still guesses your node about that share of the time, your peers see your address unless you run through Tor, and a dishonest node could feed your wallet decoys of its choosing, so for real privacy you run your own node, the same rule Monero users live by. The self-test includes a check that lists exactly that, so the claim on this page and the code never drift apart. The honest line today: Monero's design with twice its ring, which is still a crowd of 32 and not of everyone. "Untraceable" waits for stage two of phase 3 and an outside audit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <div class="measure">
+      <div class="eyebrow">Run it</div>
+      <h2>Ten minutes on your own PC.</h2>
+      <p>Python 3.10 or newer and <code>pip install -r requirements.txt</code>. Everything lives in one folder. <code>python coin.py reset-chain</code> starts a fresh chain and keeps your wallets. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a new chain needs 32 such coins, about 42 blocks or ten to twenty minutes, before its first payment: there is nothing to hide among before that. On testnet-1 your node finds the network through the seed node in <code>config.json</code>; the coins are tVESP and worth nothing.</p>
+      <ol class="run">
+        <li><strong>selftest.bat</strong> runs 44 checks, including that the miner's address never appears on the chain, that amounts stay sealed, that a spent output is never named, that the first broadcast of a payment is not the sender's, and that a view key can see but not spend.</li>
+        <li><strong>wallet.bat</strong> creates your wallet, two secret numbers behind one password, and shows your <span class="mono">tvsp2&hellip;</span> testnet-1 address and a 55-character recovery code. Write the code on paper: it is the wallet, and anyone who sees it can spend.</li>
+        <li><strong>start_node.bat</strong> starts the node, explorer and miner at <span class="mono">http://127.0.0.1:8880</span>. Every reward lands at a different one-time key.</li>
+        <li><strong>explorer.bat</strong> opens the explorer. There is no address search. There is nothing to search.</li>
+        <li><strong>wallet.bat</strong> again shows your balance, found by reading the blocks it has not seen yet and opening the outputs that are yours. That scan is what privacy costs.</li>
+        <li><strong>testdrive.bat</strong> runs the whole test drive by itself: two throwaway nodes, a payment each way, a search of the raw chain, five break-it attempts, about five minutes.</li>
+      </ol>
+      <pre>python coin.py send tvspTHEIRADDRESS 12.5     # pay someone; change comes back to you unlinkably
+python coin.py wallet new-address --label carol   # one more address, for one payer; nobody can link it to the others
+python coin.py wallet export-view            # write a view-key file: can see, cannot spend
+python coin.py watch data\wallets\default.viewkey.json   # what an accountant with your view key sees
+python coin.py proof pay TXID                # prove one payment to one person, and nothing else
+python node.py --proxy socks5h://127.0.0.1:9050   # every connection to a peer through Tor
+python demo.py                               # the math, step by step, with timings</pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Vesper, October 2026. Built by Vesper with Claude. Python with libsodium: curve.py, privacy.py, amounts.py, rangeproof.py, ringsig.py, chain.py, wallet.py, node.py, relay.py. Same proof-of-work engine as the learning chain, a different ledger.</div>
+</footer>
+
+<script>
+(function () {
+  // Evening sky: a few hundred stars, one bright evening star, slow twinkle. Canvas, not SVG.
+  var canvas = document.getElementById("sky");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (canvas && canvas.getContext) {
+    var ctx = canvas.getContext("2d"), stars = [], W = 0, H = 0, t = 0;
+    function isDark() {
+      var root = document.documentElement, th = root.getAttribute("data-theme");
+      if (th === "dark") return true; if (th === "light") return false;
+      return !(window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches);
+    }
+    function size() {
+      var r = canvas.parentElement.getBoundingClientRect();
+      W = canvas.width = Math.max(1, Math.floor(r.width)); H = canvas.height = Math.max(1, Math.floor(r.height));
+      stars = [];
+      var n = Math.floor(W * H / 6000);
+      for (var i = 0; i < n; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.3 + 0.2, p: Math.random() * 6.28, s: 0.4 + Math.random() });
+    }
+    function draw() {
+      var dark = isDark();
+      ctx.clearRect(0, 0, W, H);
+      var g = ctx.createLinearGradient(0, 0, 0, H);
+      if (dark) { g.addColorStop(0, "rgba(20,18,46,0.0)"); g.addColorStop(1, "rgba(143,124,255,0.10)"); }
+      else { g.addColorStop(0, "rgba(255,255,255,0.0)"); g.addColorStop(1, "rgba(85,66,214,0.08)"); }
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = dark ? "rgba(235,232,247,0.9)" : "rgba(27,24,48,0.35)";
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i], a = reduce ? 0.7 : 0.45 + 0.55 * Math.abs(Math.sin(t * s.s + s.p));
+        ctx.globalAlpha = a; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill();
+      }
+      // the evening star, upper right
+      var ex = W * 0.82, ey = H * 0.22, glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, 70);
+      glow.addColorStop(0, dark ? "rgba(242,198,109,0.55)" : "rgba(164,112,10,0.35)"); glow.addColorStop(1, "rgba(242,198,109,0)");
+      ctx.globalAlpha = 1; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(ex, ey, 70, 0, 6.28); ctx.fill();
+      ctx.fillStyle = dark ? "#f2c66d" : "#a4700a"; ctx.beginPath(); ctx.arc(ex, ey, 2.6, 0, 6.28); ctx.fill();
+      t += 0.012;
+      if (!reduce) requestAnimationFrame(draw);
+    }
+    size(); draw();
+    window.addEventListener("resize", function () { size(); if (reduce) draw(); });
+    if (window.matchMedia) window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", function () { if (reduce) draw(); });
+  }
+
+  // Viewpoint switcher: the same transaction, seen by three people.
+  var views = {
+    stranger: { mine: [], amounts: ["sealed", "sealed"], text: "Someone spent one of 32 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 32 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 32 is twice Monero's, not the whole chain." },
+    accountant: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "The view key opens output #0: it is Bob's, 12.5 VESP incoming. Output #1 stays sealed because it belongs to someone else (it is Alice's change, though the accountant cannot know that). The accountant cannot tell which of the 32 ring members was really spent either. It can list Bob's incoming payments forever and cannot spend a single one." },
+    bob: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "Bob sees output #0 as his and reads its amount with his view key; he alone can derive its one-time private key and spend it. When he does, his input will name 32 outputs and a fresh spent marker, and nothing will say which of the 32 was his." }
+  };
+  var tabs = document.querySelectorAll(".tab");
+  function show(name) {
+    tabs.forEach(function (b) { b.setAttribute("aria-selected", b.getAttribute("data-view") === name ? "true" : "false"); });
+    ["out0", "out1"].forEach(function (id, i) {
+      var el = document.getElementById(id); if (el) el.classList.toggle("mine", views[name].mine.indexOf(id) >= 0);
+      var a = document.getElementById("amt" + i); if (a) a.textContent = views[name].amounts[i];
+    });
+    var v = document.getElementById("verdict"); if (v) v.textContent = views[name].text;
+  }
+  tabs.forEach(function (b) { b.addEventListener("click", function () { show(b.getAttribute("data-view")); }); });
+  show("stranger");
+})();
+</script>
+
+</body>
+</html>

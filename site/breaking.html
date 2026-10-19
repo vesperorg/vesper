@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Breaking Vesper</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a public register of weaknesses. One big table, severity as a colour stripe, a "fixed already" ledger with dates, and the reporting rules. Dusk palette, dark-first. */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a; --bad: #ff6b6b;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; --bad: #c0392b; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; --bad: #c0392b; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+  .measure { max-width: 68ch; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(38px, 6.5vw, 68px); line-height: 1.04; }
+  h2 { font-size: clamp(26px, 4vw, 38px); line-height: 1.12; margin-bottom: 14px; }
+  p { margin: 0 0 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .muted { color: var(--muted); }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+  .top { padding-block: clamp(56px, 10vw, 110px) 44px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in srgb, var(--bad) 8%, transparent), transparent 70%); }
+  .top p.lede { font-size: clamp(18px, 2.2vw, 22px); max-width: 62ch; margin-top: 20px; }
+  .nav { font-family: var(--mono); font-size: 13px; margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .nav a { text-decoration: none; }
+  section { padding-block: clamp(44px, 7vw, 80px); border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+  .tablewrap { overflow-x: auto; margin-top: 18px; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td.sev { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
+  td.sev::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  td.sev.high::before { background: var(--bad); } td.sev.med::before { background: var(--warn); } td.sev.low::before { background: var(--accent2); } td.sev.design::before { background: var(--muted); }
+  td.fix { color: var(--accent); }
+  .fixed { margin-top: 18px; }
+  .fixed .row { display: grid; grid-template-columns: 110px 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  .fixed .d { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  .fixed .row b { color: var(--ok); }
+  .callout { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  ol li { margin-bottom: 8px; }
+  footer { padding-block: 36px 56px; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="nav"><a href="index.html">What Vesper is</a><a href="whitepaper.html">Whitepaper</a><a href="testdrive.html">Test drive</a></div>
+    <div class="eyebrow">Vesper &middot; VESP &middot; known weaknesses</div>
+    <h1>Breaking Vesper.</h1>
+    <p class="lede">Every way Vesper can be traced, attacked, or let you down, as far as we know, in one place, with what fixes each and when. Monero's developers did this on camera and it is the most trust-building thing any coin has done. This page is updated with every release. If you find something missing, that is the bounty.</p>
+  </div>
+</div>
+
+<section id="register">
+  <div class="wrap">
+    <div class="eyebrow">The register, as of node v0.9.0 (testnet-1), 19 October 2026</div>
+    <h2 class="measure">What an attacker can do today.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Weakness</th><th>Who can exploit it</th><th>Severity</th><th>What closes it</th></tr></thead>
+        <tbody>
+          <tr><td><b>The sender's crowd is 32.</b> A payment's input hides among 32 outputs, twice Monero's ring. Decoys are drawn from a measured spending pattern (the rule Monero's wallets use); an attacker who knows that pattern still names the real coin 3.0% of the time (fair for 32 is 3.1%), and if Vesper's users spend differently from Monero's the gap widens until it is re-measured on testnet-1. A crowd of 32 is still not a crowd of everyone.</td><td>A statistical analyst with the whole chain</td><td class="sev med">medium</td><td class="fix">Phase 3 stage two: membership proof among all outputs (research). 64 was measured (1.8%, 82 ms per payment) and judged not worth the cost yet.</td></tr>
+          <tr><td><b>Network origin is partly hidden, not hidden.</b> A payment travels node to node (a stem) before any node broadcasts it, so the first announcer is a relay. An attacker running a share of the nodes still names the sender's node about that share of the time: measured 7% at 5% of nodes, 11% at 10%, 23% at 20%, against 15%, 25% and 39% with plain broadcast. Nothing between nodes is encrypted, so someone watching the wire is not stopped, and linking many payments from one sender within one 10-minute epoch is not modelled.</td><td>A network observer running many nodes; an internet provider</td><td class="sev med">medium</td><td class="fix"><code>--proxy</code> through Tor hides your address from peers (built in). Encryption between nodes is outside this code; the production node.</td></tr>
+          <tr><td><b>A dishonest node can hand your wallet decoys of its choosing,</b> shrinking your ring to one real output plus outputs it controls or knows, and it sees when your wallet looks and what it sends.</td><td>The operator of a remote node you trust</td><td class="sev med">medium</td><td class="fix">Run your own node. Documented, same as Monero. <code>--proxy</code> hides your address from such a node, not your activity. Future: decoy sanity checks in the wallet.</td></tr>
+          <tr><td><b>The node has never met strangers.</b> Per-address limits, a one-hour ban for rule-breakers, a peer table that checks gossip before trusting it, connection timeouts, caps on bodies, answers and blocks: all built and tested in simulation and on one PC, none of it against the open internet. Peers talk plain HTTP with no authentication.</td><td>Anyone on the internet, once there is a public network</td><td class="sev med">medium</td><td class="fix">The public testnet is the test; the production node. Until then: private networks, or your own node behind Tor.</td></tr>
+          <tr><td><b>In a small network the stem is slow and thin.</b> A payment can take 30 to 75 seconds to be broadcast while it travels the stem, and with only a few nodes the relays are easy to name.</td><td>Nobody directly; it is a cost of phase 4 on small networks</td><td class="sev low">low</td><td class="fix">Grows out of the problem as the network grows; the timers are tunable rules.</td></tr>
+          <tr><td><b>The ledger lives in memory,</b> about 0.65 kB per output: fine for a test network's first months, not for years.</td><td>Anyone who runs a node, eventually</td><td class="sev low">low</td><td class="fix">An on-disk ledger and headers-first sync (planned).</td></tr>
+          <tr><td><b>Unaudited implementation.</b> The constructions are standard; our code implementing them has been reviewed only by its authors. Privacy bugs are silent.</td><td>Anyone who finds the bug first</td><td class="sev high">high</td><td class="fix">Independent cryptographic audit before genesis; the bounty; your review.</td></tr>
+          <tr><td><b>Public by design:</b> the fee (every wallet pays the same minimum for a payment's size), the number of inputs and outputs, the payment's size, which block it landed in, and the 32 candidates for each spend. Outputs of one payment are siblings because they sit in one payment. A payment carries no timestamp and lists its inputs in key-image order, so neither the clock nor the order fingerprints a wallet.</td><td>Anyone</td><td class="sev design">by design</td><td class="fix">Stays. Uniform payment shape (always 2+ outputs in random order, same fee rule, same ring size) keeps the fingerprint small.</td></tr>
+          <tr><td><b>Mining reward amounts are public,</b> and so is the development fund's income and spending.</td><td>Anyone</td><td class="sev design">by design</td><td class="fix">Stays. Issuance must be checkable; the fund is a glass box on purpose.</td></tr>
+          <tr><td><b>A view key sees every incoming payment, forever,</b> and the key images of outputs held at export, so its holder can see those spends.</td><td>Whoever you gave the view key to</td><td class="sev design">by design</td><td class="fix">Stays. Hand it out accordingly. One wallet has as many addresses as you like, but one view key still sees them all; a payment proof (<code>proof pay</code> / <code>proof receive</code>) shows one payment and nothing else.</td></tr>
+          <tr><td><b>The person who paid you knows what they paid you,</b> the one-time key, and the amount, forever.</td><td>Your counterparty</td><td class="sev design">inherent</td><td class="fix">Stays on every coin. They cannot see your other outputs or balance.</td></tr>
+          <tr><td><b>Exchanges at the edges re-identify you.</b> An exchange that knows your name on the way in and another on the way out can bracket a trail by timing and amounts at the doors.</td><td>Exchanges and whoever can compel them</td><td class="sev med">medium</td><td class="fix">Not fixable by a protocol. Atomic swaps and non-custodial on-ramps reduce it; disclosure is your choice via view keys.</td></tr>
+          <tr><td><b>Graphics cards beat CPUs</b> on the current proof of work (Argon2id); Bitcoin's chips cannot run it, but a GPU farm has an edge over laptops.</td><td>A well-funded miner</td><td class="sev med">medium</td><td class="fix">RandomX, the likely production algorithm, before any public network.</td></tr>
+          <tr><td><b>Early hashrate concentration.</b> In the first weeks one party, possibly the founder, may hold more than half the mining power; the chain is then as honest as that party.</td><td>Whoever has the most hardware</td><td class="sev med">medium at launch</td><td class="fix">Disclosure of founder mining; recruiting miners through the testnet; a difficulty rule that recovers in about 40 minutes if miners leave.</td></tr>
+          <tr><td><b>After a miner exodus, blocks are slow for about 40 minutes</b> while difficulty steps down (ASERT-style, 10-minute half-life, limited to a quarter per block).</td><td>Nobody directly; it is a liveness cost</td><td class="sev low">low</td><td class="fix">Accepted trade-off; the alternative (faster drops) invites cheap-block floods.</td></tr>
+          <tr><td><b>Payments are large:</b> about 3.1 kB binary, 7.3 kB as JSON, versus 250 bytes for Bitcoin. A ring of 32 costs space, so do range proofs, and the ledger never deletes. Blocks are capped at 4,000,000 bytes.</td><td>Anyone who runs a node: storage and bandwidth</td><td class="sev low">low</td><td class="fix">Bulletproofs+ (smaller proofs), an on-disk ledger and headers-first sync (planned).</td></tr>
+          <tr><td><b>One address for everything, if you choose to.</b> Reusing one address across contexts is safe on chain, but off chain it lets people who know it in one context recognise it in another.</td><td>People you have given your address to</td><td class="sev low">low, and yours</td><td class="fix">Built: <code>wallet new-address</code> gives each payer their own address, all unlinkable, even when payers compare notes. The wallet also spends from one address at a time where it can.</td></tr>
+          <tr><td><b>Not post-quantum.</b> A large quantum computer could forge coins and recover private view keys from published addresses, linking every past one-time key to its address. Sealed amounts would survive.</td><td>A quantum computer that does not yet exist</td><td class="sev low">future</td><td class="fix">The same migration every curve-based coin faces; no plan yet, stated so nobody assumes one.</td></tr>
+          <tr><td><b>Your wallet file is the money.</b> Lose it or its password and the coins are gone; leak it and they are someone else's. Malware on the machine while the wallet is open reads the keys.</td><td>Anyone who gets the file, or your machine</td><td class="sev high">high, and yours</td><td class="fix">Encrypted by default (scrypt, 128 MiB). A 55-character recovery code, shown once, rebuilds the wallet on any computer: write it on paper. Hardware-wallet support planned.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout"><b>What is not on this list, and why that matters.</b> Receivers, amounts and (within a crowd of 32) senders are hidden, and nobody has shown otherwise. On testnet-1 nothing here is money: tVESP has no value, which is the point of breaking it there first. The self-test ships with a check named for what the chain still leaks; if a line above ever stops being true, that test and this page change together. "Untraceable" appears nowhere on these pages until stage two and an audit say it can.</div>
+  </div>
+</section>
+
+<section id="fixed">
+  <div class="wrap">
+    <div class="eyebrow">Fixed already</div>
+    <h2 class="measure">Things that were true and no longer are.</h2>
+    <div class="fixed">
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> The node had no connection timeout, so 64 idle connections (a "slowloris", a few lines of code) locked every peer and wallet out for as long as they stayed open. Now 20 s, at most 8 slots per address, and the node's own computer is never turned away.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Only the number of payments per block was limited, so a valid 18 MB block was possible that no node could relay or fetch, which would have split the network. Blocks are now at most 4,000,000 bytes, by consensus.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Every address a peer mentioned was trusted at once, so one attacker could fill a node's whole peer table (an "eclipse"), decide what it sees and be the first hop of every payment. Gossip is now candidates, checked two a round, at most 2 per network block.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Inputs were listed biggest coin first, so their order said which hidden input held more. Inputs are now listed in key-image order and blocks refuse any other order.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> A wallet on another computer could tell from a fast "not new" answer that its payment was already on this node's stem. Every hand-in is now checked all the same and called new.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> The first phase-4 build answered a stem it already held with "loop", so anyone holding a payment could ask every node and learn which nodes were on its stem, then trace it back: up to 38% of payments at 5% spies, worse than no stem at all. Found in review the day it was built, before any network ran it. Hand-offs are now answered at once and alike, duplicates dropped silently, loops end by timer.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Decoys were picked by rank in the output line, and an attacker who knows how people spend named the real coin 7.3% of the time on a young chain and 22% on a busy year-old one. Decoys are now drawn as ages from the measured spending distribution: 7.2%, 6.5%, 6.1% (fair 6.2%).</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Designed out.</b> Subaddresses arrived with the Janus check: an output built from one of your addresses that lands on another (to learn both are yours if you confirm it) is refused, because the wallet re-derives the payment key from a sealed anchor. Monero's subaddresses still carry this one.</div></div>
+      <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> A node whose clock was behind treated its own newest saved blocks as "from the future" and set them aside as damaged at start. The future-time rule now applies only to blocks arriving from peers.</div></div>
+      <div class="row"><div class="d">2026-10-14</div><div><b>Fixed.</b> One changed character in the saved chain file stopped the node from starting. It now keeps the good blocks, sets the damaged file aside and fetches the rest from peers.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Any website open in your browser could stop your miner or redirect its rewards through the node's local API. The node now refuses cross-site requests. The same hole was found and closed in the learning chain.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Two different blocks could in principle share an ID (the Merkle-tree duplication flaw behind Bitcoin's CVE-2012-2459). Designed out; and a node now records a block only under an ID it computed itself, so a peer cannot delay a real block by sending junk under its ID.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Replacing a whole ring after a reorganisation removed one decoy leaked which output was real. Now only the lost decoy is replaced.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Two payments to the same one-time key used to share one spent marker, so only one could ever be spent (Monero's "burning bug"). Spent markers are now tied to each output's position, so both are spendable, and no key-uniqueness rule is needed: such a rule would let a stranger cancel a waiting payment.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Wallets downloaded every output on the chain to find their own. They now read only new blocks, so the cost of privacy stopped growing with the chain.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Proof of work was Bitcoin's SHA-256, so rented Bitcoin hashrate could overrun the chain in hours. Switched to memory-hard Argon2id.</div></div>
+          <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Difficulty adjusted once every ten blocks, a known hash-and-run target for small chains. Now adjusts every block.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> A power cut while saving a block could leave the chain file unreadable.</div></div>
+      <div class="row"><div class="d">2026-10-11</div><div><b>Fixed.</b> Spending a mining reward revealed that payment's total (public reward in, sealed outputs out). Rings removed the link to the spent output.</div></div>
+      <div class="row"><div class="d">2026-10-10</div><div><b>Fixed.</b> Amounts were visible on chain. Sealed with commitments and range proofs in phase 2.</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="report">
+  <div class="wrap">
+    <div class="eyebrow">Found one?</div>
+    <h2 class="measure">How to report, and what you get.</h2>
+    <ol>
+      <li>Check this register and the whitepaper's threat model. If it is listed, it is known; tell us anyway if you can show it is worse than described.</li>
+      <li>Write it up so we can reproduce it: what you saw, how, with what data. Chain file, transaction IDs, a script if you have one.</li>
+      <li>Send it privately: open a GitHub issue in the repository titled "security: contact requested" with no details, and a private channel is arranged from there (the same route is in SECURITY.md). Public disclosure before a fix forfeits the bounty, never the credit.</li>
+      <li>You are credited here by name or handle when the fix ships, and paid from the bounty pool according to severity, in public.</li>
+    </ol>
+    <p class="measure muted">The bounty rules are on the Join page. This page is the only marketing a privacy coin should need: a list of its own flaws, kept honestly.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Breaking Vesper, updated 19 October 2026 for node v0.9.0, testnet-1 (44 self-test checks; <code>leaktest.py</code> prints the measured numbers quoted above). If a line here is wrong, the test suite or this page is wrong, and we want to know which.</div>
+</footer>
+
+</body>
+</html>

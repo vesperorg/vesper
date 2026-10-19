@@ -1,0 +1,27 @@
+# A Vesper seed node as a system service (setup-seed.sh fills in the __PLACEHOLDERS__).
+# It listens on every address, tells peers its public address, mines on one core so the
+# test network keeps making blocks, and restarts by itself if it ever stops.
+[Unit]
+Description=Vesper seed node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=vesper
+Group=vesper
+WorkingDirectory=__APP__
+ExecStart=__APP__/venv/bin/python node.py --host 0.0.0.0 --port __PORT__ --public-url http://__IP__:__PORT__ --data-dir __DATA__ --mine --processes 1
+Restart=always
+RestartSec=10
+# a node needs to read its code and write its data folder, nothing else
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=__DATA__
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

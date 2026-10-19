@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block explorer</title>
+<style>
+  :root{--bg:#0e0f14;--panel:#171922;--panel2:#1e2130;--line:#2a2e3d;--text:#e6e8ee;--muted:#8b93a7;--accent:#9d8cff;--good:#3dd68c;--bad:#ff6b6b;--link:#7cc4ff;--mono:ui-monospace,Consolas,Menlo,monospace}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:18px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{margin:0;font-size:22px} header h1 span{color:var(--accent)}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:middle} .dot.on{background:var(--good)}
+  .sub{color:var(--muted);font-size:13px}
+  main{padding:20px 24px;max-width:1300px;margin:0 auto}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px} .card .v{font-size:22px;font-weight:600;margin-top:4px;word-break:break-word} .card .s{color:var(--muted);font-size:12px;margin-top:2px}
+  .row{display:grid;grid-template-columns:1fr;gap:16px} @media(min-width:980px){.row{grid-template-columns:1fr 1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+  section h2{margin:0 0 10px;font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px} th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top} th{color:var(--muted);font-weight:500;font-size:12px}
+  .mono{font-family:var(--mono);font-size:12.5px} tr.block{cursor:pointer} tr.block:hover{background:var(--panel2)} tr.detail td{background:var(--panel2);padding:10px 12px}
+  .right{text-align:right} .muted{color:var(--muted)} .good{color:var(--good)} .bad{color:var(--bad)} .accent{color:var(--accent)}
+  .linkish{color:var(--link);cursor:pointer}
+  input,button{font:inherit} input[type=text]{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 12px;width:100%}
+  button{background:var(--accent);color:#120d2a;border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer} button.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)} button:disabled{opacity:.5;cursor:default}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center} .bar input[type=text]{flex:1;min-width:220px}
+  pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:12px;margin:8px 0 0}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--muted)} .pill.on{color:var(--good);border-color:var(--good)} .pill.off{color:var(--muted)}
+  #result:empty{display:none} .explain{color:var(--muted);font-size:13px;margin:6px 0 0}
+  .flow{font-family:var(--mono);font-size:12px;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+  <h1><span id="coinName">...</span> explorer</h1>
+  <div class="sub"><span class="dot" id="dot"></span><span id="nodeUrl">connecting...</span></div>
+  <div class="sub" id="peersLine"></div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card"><div class="k">Block height</div><div class="v" id="height">-</div><div class="s" id="tipAge"></div></div>
+    <div class="card"><div class="k">Difficulty</div><div class="v" id="difficulty">-</div><div class="s" id="diffNext"></div></div>
+    <div class="card"><div class="k">Block time</div><div class="v" id="blockTime">-</div><div class="s" id="blockTarget"></div></div>
+    <div class="card"><div class="k">Supply</div><div class="v" id="supply">-</div><div class="s" id="supplyMax"></div></div>
+    <div class="card"><div class="k">Outputs</div><div class="v" id="utxos">-</div><div class="s" id="spends">owned by nobody knows whom</div></div>
+    <div class="card"><div class="k">Mempool</div><div class="v" id="mempoolCount">-</div><div class="s">waiting transactions</div></div>
+    <div class="card"><div class="k">Miner</div><div class="v" id="minerState">-</div><div class="s" id="minerRate"></div></div>
+  </div>
+
+  <section>
+    <h2>What this chain hides</h2>
+    <div class="bar" id="privacy"></div>
+    <p class="explain">Every payment lands at a one-time key, every amount is sealed in a commitment, and a payment never says which output it spends: it points at a ring of <span id="ringNote">16</span> outputs and proves it owns one. Nodes check that no coins were created by adding the sealed amounts together, never by reading them, and stop double spends with anonymous "spent markers". Only two numbers are public: the fee, and the mining reward. Your own balance is found by your wallet, scanning with your view key. A new output can be spent, or used as a decoy, once it is <span id="lockNote">10</span> blocks old.</p>
+    <p class="explain" id="fundLine"></p>
+  </section>
+
+  <section>
+    <h2>Mining</h2>
+    <div class="bar">
+      <input type="text" id="mineAddr" placeholder="reward address (defaults to the node's wallet)">
+      <button id="btnStart">Start mining</button><button id="btnStop" class="secondary">Stop</button>
+    </div>
+    <p class="explain" id="mineHelp">Rewards go to the address above, as one-time keys. The chain never shows the address itself.</p>
+  </section>
+
+  <section>
+    <h2>Search</h2>
+    <div class="bar"><input type="text" id="q" placeholder="block number, block hash, or transaction id"><button id="btnSearch" class="secondary">Look up</button></div>
+    <div id="result"></div>
+  </section>
+
+  <div class="row">
+    <section>
+      <h2>Latest blocks <span class="muted" style="text-transform:none;letter-spacing:0">(click a row)</span></h2>
+      <table id="blocks"><thead><tr><th>#</th><th>Age</th><th class="right">Txs</th><th class="right">In</th><th class="right">Out</th><th class="right">Difficulty</th><th>Hash</th></tr></thead><tbody></tbody></table>
+    </section>
+    <section>
+      <h2>Mempool</h2>
+      <table id="mempool"><thead><tr><th>Txid</th><th class="right">Inputs</th><th class="right">Outputs</th><th class="right">Fee</th></tr></thead><tbody></tbody></table>
+      <p class="explain" id="mempoolEmpty">No transactions waiting. Send one with: <span class="mono">python coin.py send &lt;address&gt; &lt;amount&gt;</span></p>
+    </section>
+  </div>
+</main>
+<script>
+(function(){
+  var info=null, openBlock=null;
+  var $=function(id){return document.getElementById(id)};
+  var esc=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+  function fmt(u){ if(!info) return String(u); var d=info.decimals, n=Math.abs(Number(u)); var w=Math.floor(n/Math.pow(10,d)), f=n-w*Math.pow(10,d); var s=w.toLocaleString(); if(d){var t=String(f).padStart(d,"0").replace(/0+$/,""); if(t) s+="."+t;} return (u<0?"-":"")+s+" "+info.ticker; }
+  function short(h,n){n=n||14;return h&&h.length>n?h.slice(0,n)+"...":(h||"")}
+  function ago(ts){var s=Math.max(0,Math.round(Date.now()/1000-ts)); if(s<60)return s+"s ago"; if(s<3600)return Math.floor(s/60)+"m "+(s%60)+"s ago"; if(s<86400)return Math.floor(s/3600)+"h "+Math.floor(s%3600/60)+"m ago"; return Math.floor(s/86400)+"d ago"}
+  function when(ts){return new Date(ts*1000).toLocaleString()}
+  function get(p){return fetch(p,{cache:"no-store"}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||r.statusText);return j})})}
+  function post(p,b){return fetch(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||r.statusText);return j})})}
+  function txLink(t){return '<span class="linkish mono" data-q="'+esc(t)+'">'+esc(short(t,18))+'</span>'}
+  function renderInfo(d){
+    info=d; document.title=d.coin+" explorer"; $("coinName").textContent=d.coin+" ("+d.ticker+")"+(d.network?" - "+d.network+(d.network.indexOf("test")>=0?" (test coins, no value)":""):"");
+    $("nodeUrl").textContent=d.node_url+"  v"+d.version; $("dot").className="dot on";
+    $("peersLine").textContent=d.peers.length?"peers: "+d.peers.join(", "):"no peers (single node)";
+    $("height").textContent=d.height.toLocaleString(); $("tipAge").textContent=d.height?"last block "+ago(d.tip_timestamp):"only the genesis block so far";
+    $("difficulty").textContent=d.difficulty.toLocaleString(); $("diffNext").textContent="tries per block ("+(d.pow?d.pow.algorithm:"")+"), next "+d.next_difficulty.toLocaleString();
+    $("blockTime").textContent=d.avg_block_seconds_recent==null?"-":d.avg_block_seconds_recent+"s"; $("blockTarget").textContent="target "+d.target_block_seconds+"s, recent average";
+    $("supply").textContent=fmt(d.circulating_supply); $("supplyMax").textContent="of "+fmt(d.max_supply)+" max";
+    $("utxos").textContent=d.output_count.toLocaleString(); $("spends").textContent=d.spend_count.toLocaleString()+" spent - nobody can tell which"; $("ringNote").textContent=d.ring_size; $("lockNote").textContent=d.output_lock_blocks; $("mempoolCount").textContent=d.mempool_size;
+    var m=d.miner; $("minerState").innerHTML=m.running?'<span class="good">running</span>':'<span class="muted">stopped</span>';
+    $("minerRate").textContent=m.running?m.hashrate.toLocaleString()+" tries/s, "+m.blocks_found+" found":(d.reward_address?"rewards -> "+short(d.reward_address,16):"no wallet yet - run wallet.bat");
+    if(!$("mineAddr").value&&d.reward_address)$("mineAddr").placeholder=d.reward_address;
+    $("btnStart").disabled=m.running; $("btnStop").disabled=!m.running;
+    var f=d.dev_fund||{}; $("fundLine").innerHTML=f.enabled?('<b>Development fund</b> (the one public account on this chain): '+f.percent+'% of each block reward for '+f.blocks_remaining.toLocaleString()+' more blocks. Received '+fmt(f.total_received)+', unspent '+fmt(f.unspent)+', spent '+fmt(f.spent)+'.'):'';
+    var p=d.privacy; $("privacy").innerHTML=[["receivers_hidden","Receivers"],["amounts_hidden","Amounts"],["senders_hidden","Senders"]].map(function(x){return '<span class="pill '+(p[x[0]]?"on":"off")+'">'+x[1]+": "+(p[x[0]]?"hidden":"visible")+'</span>'}).join(" ");
+  }
+  function txTable(txs){
+    return txs.map(function(t){
+      var ins=t.inputs.length?t.inputs.map(function(i){return i.ring?('spends <span class="accent">one of a ring of '+i.ring.length+' outputs</span> <span class="muted">(spent marker '+short(i.key_image,12)+')</span>'):('spends development fund output '+short(i.txid,10)+':'+i.index+' <span class="muted">(public)</span>')}).join('<br>'):'<span class="muted">new coins (coinbase)</span>';
+      var outs=t.outputs.map(function(o){var what=o.amount!=null?fmt(o.amount)+' <span class="muted">('+(o.ephemeral_secret?'development fund, public':'mining reward, public')+')</span>':'<span class="accent">sealed amount</span> <span class="muted">'+short(o.commitment,12)+'</span>'; return what+' -> one-time key '+short(o.one_time_pub,14)}).join('<br>');
+      return '<div style="margin:6px 0 10px"><div>'+txLink(t.txid)+' <span class="muted">fee '+(t.fee?fmt(t.fee):"-")+'</span></div><div class="flow">'+ins+'<br>&nbsp;&nbsp;&#8594; '+outs+'</div></div>';
+    }).join("");
+  }
+  function renderBlocks(d){
+    var rows=[]; d.blocks.forEach(function(b){
+      rows.push('<tr class="block" data-index="'+b.index+'"><td>'+b.index+'</td><td>'+esc(ago(b.timestamp))+'</td><td class="right">'+b.tx_count+'</td><td class="right">'+b.inputs+'</td><td class="right">'+b.outputs+'</td><td class="right">'+b.difficulty+'</td><td class="mono">'+esc(short(b.hash,20))+'</td></tr>');
+      if(openBlock===b.index) rows.push('<tr class="detail" id="detail-'+b.index+'"><td colspan="7">loading...</td></tr>');
+    });
+    $("blocks").querySelector("tbody").innerHTML=rows.join(""); if(openBlock!==null) loadDetail(openBlock);
+  }
+  function loadDetail(i){ get("/api/block/"+i).then(function(b){var el=$("detail-"+i); if(!el)return; el.innerHTML='<td colspan="7"><div class="mono" style="margin-bottom:6px">hash '+esc(b.hash)+'<br>prev '+esc(b.previous_hash)+'<br>nonce '+b.nonce+' &nbsp; difficulty '+b.difficulty.toLocaleString()+' &nbsp; '+esc(when(b.timestamp))+'</div>'+(b.transactions.length?txTable(b.transactions):'<span class="muted">genesis block - no transactions, no premine</span>')+'</td>'}).catch(function(){}) }
+  function renderMempool(d){ var rows=d.transactions.map(function(t){return '<tr><td>'+txLink(t.txid)+'</td><td class="right">'+t.inputs.length+'</td><td class="right">'+t.outputs.length+'</td><td class="right muted">'+fmt(t.fee)+'</td></tr>'}); $("mempool").querySelector("tbody").innerHTML=rows.join(""); $("mempoolEmpty").style.display=rows.length?"none":""; }
+  function refresh(){ get("/api/info").then(function(d){renderInfo(d); return Promise.all([get("/api/chain?limit=15").then(renderBlocks),get("/api/mempool").then(renderMempool)])}).catch(function(e){$("dot").className="dot";$("nodeUrl").textContent="node not responding: "+e.message}) }
+  function showResult(h){$("result").innerHTML=h}
+  function search(q){ q=(q||"").trim(); if(!q)return; $("q").value=q;
+    if(/^\d+$/.test(q)) return get("/api/block/"+q).then(function(b){showResult('<h3 style="margin:12px 0 4px">Block '+b.index+'</h3><div class="mono muted">'+esc(b.hash)+'<br>'+esc(when(b.timestamp))+' &nbsp; nonce '+b.nonce+' &nbsp; difficulty '+b.difficulty.toLocaleString()+'</div>'+(b.transactions.length?txTable(b.transactions):'<p class="muted">genesis block</p>'))}).catch(function(e){showResult('<p class="bad">'+esc(e.message)+'</p>')});
+    if(/^[0-9a-f]{64}$/i.test(q)) return get("/api/tx/"+q).then(function(r){showResult('<h3 style="margin:12px 0 4px">Transaction</h3><p>'+(r.block==null?'<span class="pill">pending in mempool</span>':'in block <span class="linkish" data-q="'+r.block+'">'+r.block+'</span>, '+r.confirmations+' confirmation(s)')+'</p>'+txTable([r.tx])+'<pre>'+esc(JSON.stringify(r.tx,null,2))+'</pre>')}).catch(function(){return get("/api/block/"+q).then(function(b){search(String(b.index))}).catch(function(){showResult('<p class="bad">nothing found for that hash</p>')})});
+    if(info&&q.indexOf(info.address_prefix)===0) return showResult('<p class="accent">That is an address. Addresses never appear on this chain, so there is nothing to look up. Only the wallet that owns it can find its payments, with its view key.</p>');
+    showResult('<p class="bad">That does not look like a block number, block hash or txid.</p>');
+  }
+  document.addEventListener("click",function(ev){var t=ev.target.closest("[data-q]"); if(t){search(t.getAttribute("data-q"));return} var row=ev.target.closest("tr.block"); if(row){var i=Number(row.getAttribute("data-index")); openBlock=openBlock===i?null:i; get("/api/chain?limit=15").then(renderBlocks)}});
+  $("btnSearch").onclick=function(){search($("q").value)}; $("q").addEventListener("keydown",function(e){if(e.key==="Enter")search($("q").value)});
+  $("btnStart").onclick=function(){post("/api/miner/start",{address:$("mineAddr").value.trim()||null}).then(refresh).catch(function(e){$("mineHelp").innerHTML='<span class="bad">'+esc(e.message)+'</span>'})};
+  $("btnStop").onclick=function(){post("/api/miner/stop",{}).then(refresh).catch(function(e){$("mineHelp").innerHTML='<span class="bad">'+esc(e.message)+'</span>'})};
+  refresh(); setInterval(refresh,4000);
+})();
+</script>
+</body>
+</html>

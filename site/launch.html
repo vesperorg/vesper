@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vesper Launch</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: the launch companion to the Vesper page. Same dusk palette; a countdown band up top, then a reading column with the fund ledger and the rules, nothing to buy anywhere. Dark-first. */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a; --ink-on-accent: #1a1300;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+  .measure { max-width: 68ch; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(38px, 6.5vw, 70px); line-height: 1.04; font-variation-settings: "opsz" 144; }
+  h2 { font-size: clamp(26px, 4vw, 38px); line-height: 1.12; margin-bottom: 14px; }
+  h3 { font-size: 20px; margin-bottom: 8px; }
+  p { margin: 0 0 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+  .top { padding-block: clamp(56px, 10vw, 110px) 44px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in srgb, var(--accent2) 10%, transparent), transparent 70%); }
+  .top p.lede { font-size: clamp(18px, 2.2vw, 22px); max-width: 62ch; margin-top: 20px; }
+  .nav { font-family: var(--mono); font-size: 13px; margin-bottom: 24px; }
+  .nav a { text-decoration: none; }
+  .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 28px; }
+  .count { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; min-width: 0; }
+  .count .lab { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .count .cd { font-family: var(--display); font-size: clamp(30px, 4vw, 44px); font-weight: 600; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .count .when { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .count.main { border-color: var(--accent); }
+  section { padding-block: clamp(44px, 7vw, 80px); border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 22px; }
+  .rule { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .rule .n { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .rule p { font-size: 15px; color: var(--muted); margin: 0; }
+  .ledger { margin-top: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .ledger .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .cell { background: var(--surface2); border-radius: 12px; padding: 14px; }
+  .cell .big { font-family: var(--display); font-size: 30px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .cell .lab { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .ledger .note { color: var(--muted); font-size: 14px; margin: 14px 0 0; }
+  .bar { height: 10px; background: var(--surface2); border-radius: 999px; overflow: hidden; margin-top: 16px; }
+  .bar i { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 999px; }
+  .tablewrap { overflow-x: auto; margin-top: 18px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .help { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 22px; }
+  .helpcard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .helpcard h3 { font-size: 19px; }
+  .helpcard p { font-size: 15px; color: var(--muted); margin: 0; }
+  .nobuy { margin-top: 22px; background: var(--surface); border: 1px solid var(--warn); border-radius: 14px; padding: 18px 20px; }
+  .nobuy b { color: var(--warn); }
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 8px 0 0; }
+  pre { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; margin: 14px 0 0; }
+  footer { padding-block: 36px 56px; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="nav"><a href="index.html">&larr; What Vesper is and how it hides a payment</a></div>
+    <div class="eyebrow">Vesper &middot; VESP &middot; launch plan</div>
+    <h1>Fair launch. No presale. No premine.</h1>
+    <p class="lede">Nobody can buy Vesper before it exists, including the people building it. Block 1 is mined in public, by anyone who shows up. Development is paid for by a fixed slice of every block reward, written into the rules and visible to everyone, for four years and then never again.</p>
+    <div class="counts">
+      <div class="count"><div class="lab">Where the code is</div><div class="cd">Phases 1 to 4 built</div><div class="when">Receivers hidden. Amounts hidden. Senders hidden in a ring of 32, twice Monero's. The first broadcast of a payment comes from a relay, not the sender, and that leak is measured and published. Node v0.9.0, 44 self-test checks. Not audited.</div></div>
+      <div class="count"><div class="lab">Public testnet</div><div class="cd">testnet-1, launching</div><div class="when">Test coins (tVESP, addresses start <span class="mono">tvsp2</span>) with no value, ever, on a real network, so anyone can try to break it before it matters. Its genesis is fixed and tied to a Bitcoin block; the seed node's address appears on the Join page the day the rented server is up. See "Testnet-1" below.</div></div>
+      <div class="count main"><div class="lab">Mainnet genesis</div><div class="cd">No date, on purpose</div><div class="when">Gated by the public testnet, an independent cryptographic audit, and legal advice. A date printed before those would be a promise the code cannot keep. When one exists, it appears here first.</div></div>
+    </div>
+  </div>
+</div>
+
+<section id="rules">
+  <div class="wrap">
+    <div class="eyebrow">The launch rules</div>
+    <h2 class="measure">Five rules, all of them enforced by the code, not by promises.</h2>
+    <div class="rules">
+      <div class="rule"><div class="n">RULE 1</div><h3>Zero coins before block 1</h3><p>The genesis block has no outputs. There is no founder allocation, no treasury, no early round. The first coin that exists is the first mining reward.</p></div>
+      <div class="rule"><div class="n">RULE 2</div><h3>Anyone mines from the first block</h3><p>The same node software everyone downloads is what mines block 1. Seed-node addresses are published in advance so the network starts as a crowd, not as one computer.</p></div>
+      <div class="rule"><div class="n">RULE 3</div><h3>10% of every block to the development fund</h3><p>For the first 4,204,800 blocks, four years at a 30-second block, each block reward splits 90% to the miner and 10% to the fund. Transaction fees go to the miner in full. Block 4,204,801 pays miners 100%, forever.</p></div>
+      <div class="rule"><div class="n">RULE 4</div><h3>Every fund payment is auditable</h3><p>The fund's share lands at a one-time key like any payment, but the secret that derives it is published in the block. Anyone can verify the fund received exactly its share and not a coin more. Miners who pay it less, or pay someone else, mine an invalid block. The fund is a glass box in both directions: its income is public by construction, and it spends by naming its outputs in the open with an ordinary signature, so its spending is public on chain too. Only what it pays out to is sealed, like any payment.</p></div>
+      <div class="rule"><div class="n">RULE 5</div><h3>The fund can only receive, never mint</h3><p>The fund has no special powers. It cannot create coins, freeze coins, or change rules. Its only income is the 10% slice, and that slice has an end date in the code.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="fund">
+  <div class="wrap">
+    <div class="eyebrow">The development fund</div>
+    <h2 class="measure">What it pays for, and the ledger anyone can check.</h2>
+    <p class="measure">Outside security review of the privacy math before genesis and after every phase. Seed nodes and the public testnet. Wallets people can actually use. Bounties for anyone who finds a way to trace a payment. The fund publishes what it spends; the chain already publishes what it receives.</p>
+    <div class="ledger">
+      <div class="grid">
+        <div class="cell"><div class="big num" id="f-received">0</div><div class="lab">VESP received so far</div></div>
+        <div class="cell"><div class="big num" id="f-unspent">0</div><div class="lab">VESP unspent</div></div>
+        <div class="cell"><div class="big num" id="f-blocks">0</div><div class="lab">of 4,204,800 fund blocks mined</div></div>
+        <div class="cell"><div class="big num">10%</div><div class="lab">of each block reward, then 0%</div></div>
+      </div>
+      <div class="bar" aria-hidden="true"><i id="f-bar"></i></div>
+      <p class="note">The fund starts at block 1 of mainnet. Until genesis this ledger reads zero because there is nothing to count. After genesis it is the node's own accounting: <code>python coin.py devfund show</code> recomputes these numbers from the chain on any computer.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Where the money goes</th><th>Share of the fund</th><th>Decided by</th></tr></thead>
+        <tbody>
+          <tr><td>Security review and audits of the privacy math</td><td class="num">first call on every payout</td><td>the published audit scope</td></tr>
+          <tr><td>Development: stage two of phase 3, the hardened node, the wallets</td><td class="num">most of the rest</td><td>public roadmap, public spend log</td></tr>
+          <tr><td>Seed nodes, testnet, infrastructure</td><td class="num">as needed</td><td>public spend log</td></tr>
+          <tr><td>Trace-me bounties</td><td class="num">a standing pool</td><td>paid to whoever breaks it, in public</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="economics">
+  <div class="wrap">
+    <div class="eyebrow">Economics</div>
+    <h2 class="measure">Set with the genesis block, not before.</h2>
+    <p class="measure">Mainnet block time, reward, halving schedule and total supply are undecided. They are published together with the genesis block and the final code, so they match what was actually tested. Any supply figure you see elsewhere before then is a demo setting, not Vesper's. The only numbers that are already rules:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Parameter</th><th>Value</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Premine</td><td class="num">0</td><td>and it stays 0</td></tr>
+          <tr><td>Development fund</td><td class="num">10% of the block reward for 4,204,800 blocks</td><td>then 0%, enforced by every node; fees never included</td></tr>
+          <tr><td>Privacy</td><td class="num">mandatory</td><td>there is no transparent transaction type; receivers, amounts and senders (ring of 32) are hidden today, and the first broadcast of a payment comes from a relay, not the sender</td></tr>
+          <tr><td>Ring size</td><td class="num">32</td><td>decided 18 October 2026, twice Monero's 16: every input hides among 32 outputs; hashed into block 0 with every other rule. Measured: a node accepts a payment in 54 ms (45 at 16), a payment is 7.3 kB (5.1), and an attacker who knows how people spend names the real coin 3.0% of the time where 3.1% is fair (5.5% at 16). 64 was measured too (82 ms, 11.7 kB, 1.8%) and judged not worth the cost yet</td></tr>
+          <tr><td>Network</td><td class="num">testnet-1</td><td>test coins tVESP, addresses start <span class="mono">tvsp2</span>, no value ever; a real network, if there is one, gets its own genesis, ticker and addresses</td></tr>
+          <tr><td>Genesis</td><td class="num">tied to a Bitcoin block</td><td>made by <code>launch_genesis.py</code> at launch: the genesis message names the newest Bitcoin block at that moment (two explorers must agree) and the launch time, so nobody could have mined before it; the exact block and genesis ID are in README.md and in <code>coin.py info</code>; initial difficulty 4,096 tries, from measured test mining</td></tr>
+          <tr><td>Block size</td><td class="num">at most 4,000,000 bytes</td><td>about 200 ordinary payments fit in 1 MB; the cap keeps every valid block relayable</td></tr>
+          <tr><td>Proof of work</td><td class="num">Argon2id, 32 MiB per try</td><td>interim: hostile to Bitcoin mining chips, not to graphics cards; RandomX is the likely production algorithm, settled before any public network</td></tr>
+          <tr><td>Difficulty</td><td class="num">adjusts every block</td><td>each block nudges difficulty by how long the last one took (ASERT-style, 10-minute half-life, never more than double or a quarter per block); if 90% of miners vanish at once, blocks are slow for about 40 minutes and then normal</td></tr>
+          <tr><td>Spend lock</td><td class="num">10 blocks</td><td>a coin, reward or payment, can be spent or used as a decoy only once it is 10 blocks old; Monero waits 20</td></tr>
+          <tr><td>Consensus settings</td><td class="num">hashed into block 0</td><td>a node running different rules rejects the chain at genesis</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="mining">
+  <div class="wrap">
+    <div class="eyebrow">How the coins come into existence</div>
+    <h2 class="measure">Nothing is mined before genesis. Not by us, not by anyone.</h2>
+    <p class="measure">Testnet-1 is the rehearsal of exactly this procedure, with coins that are worth nothing: its genesis block names a Bitcoin block mined minutes before the launch moment, its starting difficulty comes from measured test mining, and anyone can check both from the chain itself.</p>
+    <p class="measure">Genesis is block 0, the first block of the real chain. It is computed from the published rules: every consensus setting (reward, halving, ring size, proof of work, the fund's address) is hashed into it, so every computer that ships with the same rules starts from the identical block, and it contains no coins. Every chain running today is a test chain that gets thrown away. On genesis day, anyone who runs the node and presses mine starts earning block rewards with their own computer, at the lowest difficulty the chain will ever have. That is the only way VESP is ever created, and the people building it start the same morning as everyone else, with the same software.</p>
+    <div class="rules">
+      <div class="rule"><div class="n">WHAT MINING IS</div><h3>Electricity in, coins out</h3><p>A miner's computer runs a memory-hungry puzzle, Argon2id with 32 MB per try, about 90 tries a second per laptop core and 300 to 420 a second on eight cores, until one answer is small enough. No money is deposited anywhere. The cost is the computer's time and power; the reward is the block's coins, paid to a one-time key only that miner can spend.</p></div>
+      <div class="rule"><div class="n">WHO MINES</div><h3>Whoever shows up</h3><p>Rewards are shared in proportion to mining power. One laptop among ten laptops earns about a tenth. The puzzle is chosen so Bitcoin's mining chips cannot run it at all; graphics cards keep an edge over CPUs, and the algorithm is an interim choice, with RandomX the likely production one, settled before any public network.</p></div>
+      <div class="rule"><div class="n">WHAT WE COMMIT TO</div><h3>No secret head start</h3><p>A private mining period before the public genesis is called an instamine. It is what killed the coin Monero was forked from, and it is detectable from block timestamps and difficulty. Vesper's genesis time is announced in advance and the chain's own record proves it was honoured. Three mechanics make a head start impossible rather than merely forbidden: the genesis message must contain something nobody could know earlier (for example the newest Bitcoin block ID at the launch moment), the genesis timestamp is the launch moment itself, and the starting difficulty is set from the test network's measured mining rate, not from zero.</p></div>
+      <div class="rule"><div class="n">WHERE IT RUNS</div><h3>Every node, not one PC</h3><p>The chain lives on every computer running the software. For testnet-1 the Vesper team runs one seed node on a rented server (never a home connection) so strangers can find each other; the kit is in <code>deploy/</code>, and whoever runs a seed node does not run the network and cannot stop it. Honest status: there is no foundation yet (a legal entity is on the pre-genesis list). The node now has per-address limits, a one-hour ban for peers that break the rules, a peer table that treats gossip as candidates to be checked, and connection timeouts; all of it tested in simulation and on one PC, none of it against real strangers yet. The public testnet is that test. Nothing between nodes is encrypted; <code>--proxy</code> sends a node's traffic through Tor.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="after">
+  <div class="wrap">
+    <div class="eyebrow">After genesis</div>
+    <h2 class="measure">How VESP gets traded, in the order it can actually happen.</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Step</th><th>What</th><th>When it becomes possible</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><b>Mining</b> is the only source of VESP on day one. Nobody has any to sell until blocks exist.</td><td>Genesis</td></tr>
+          <tr><td>2</td><td><b>Person-to-person swaps</b>: the atomic swap protocol lets a stranger trade ETH or BTC for VESP chain-to-chain, with cryptography that makes it impossible for either side to take the other's coins and run. No custodian, nothing to hack.</td><td>First post-launch deliverable from the fund</td></tr>
+          <tr><td>3</td><td><b>Swap services</b>: instant-exchange sites that hold reserves and trade one coin for another. They list privacy coins today and need only a working chain, a wallet they can run, and liquidity.</td><td>Months after genesis, once there is enough VESP in circulation</td></tr>
+          <tr><td>4</td><td><b>Exchanges</b>: the mid-size ones first, after a track record and a legal entity to sign with. The largest ones have delisted privacy coins over compliance; Vesper's view keys are the argument for that conversation, and it is a long one.</td><td>A year or more</td></tr>
+          <tr><td>5</td><td><b>A wrapped VESP on another chain</b> is possible and discouraged: it is transparent, so privacy ends where it starts, and custodial bridges are the most robbed thing in crypto. The foundation will not run one.</td><td>Not planned</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="help">
+  <div class="wrap">
+    <div class="eyebrow">How to help before genesis</div>
+    <h2 class="measure">There is nothing to buy. There is plenty to do.</h2>
+    <div class="help">
+      <div class="helpcard"><h3>Run a testnet-1 node</h3><p>Install, start the node, mine tVESP that is worth nothing. The seed node's address is on the Join page the day the server is up; until then the same software runs a chain of its own on your PC. What you give is a real network to test against.</p></div>
+      <div class="helpcard"><h3>Try to trace a payment</h3><p>The code is readable on purpose. Every phase ships with a test that states what it still leaks. Find a leak the test does not list and the fund pays you for it.</p></div>
+      <div class="helpcard"><h3>Review the math</h3><p>If you know elliptic curves, ring signatures or zero-knowledge proofs, read <code>curve.py</code> and <code>privacy.py</code> and say what is wrong. Before genesis, that is the most valuable hour anyone can give.</p></div>
+      <div class="helpcard"><h3>Donate to the fund after genesis</h3><p>The fund's address is announced with the genesis block. Donations to it are ordinary payments and show in the public ledger above. Nothing is accepted before that.</p></div>
+    </div>
+    <div class="nobuy"><b>Read this.</b> Vesper has no token, no presale and no sale of any kind, now or at launch. Testnet-1's tVESP are test coins with no value, and anyone offering tVESP or VESP for money is not us. The only way to get VESP on day one, if a real network ever exists, is to mine it.</div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="eyebrow">Questions</div>
+    <h2 class="measure">Asked already.</h2>
+    <details><summary>Why no presale? You could raise money faster.</summary><p>Two reasons. Privacy-coin communities treat any pre-launch allocation as a sign the coin exists to enrich insiders, and they are usually right. And selling a privacy coin to the public is the most heavily scrutinised version of a token sale there is. A mined launch with a visible fund avoids both and is how the privacy coins people actually trust were born.</p></details>
+    <details><summary>Isn't a development fund just a slow premine?</summary><p>A premine is coins that exist before anyone else can earn any. The fund earns alongside miners, from the same blocks, at a rate everyone can see, and it stops. Zcash funded itself this way; so do several chains since. The difference from a premine is the three words "visible", "capped" and "ends".</p></details>
+    <details><summary>Can the fund be changed later to take more?</summary><p>Only by changing the consensus rules, which means every node operator choosing to run new software. The fund cannot do it alone, and a change that raises the fund's share would be visible to everyone before it took effect.</p></details>
+    <details><summary>Is it untraceable today?</summary><p>No, and this page will not say so until it is. Today receivers and amounts are hidden and the sender is hidden among 32 outputs, Monero's design with twice its ring, which is still a crowd of 32 and not of everyone. Phase 4 means the first broadcast of a payment comes from a relay rather than the sender's node, and the leak is measured: an attacker running 10% of the nodes still names the sender's node about 11% of the time. Nothing between nodes is encrypted unless you run through Tor. Hiding the sender among every output is research, and the code has not been independently audited. Genesis comes after the testnet and that audit, not before.</p></details>
+    <details><summary>Who is behind it?</summary><p>A pseudonymous developer, Vesper, building in the open with an AI pair. The name on the code is the project, not a person. Which is exactly why the fund's income is on chain, the spend log is public, and the audit comes before the launch.</p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Vesper launch plan, October 2026. There are no dates on this page on purpose. When the code earns one, it appears here first.</div>
+</footer>
+
+</body>
+</html>

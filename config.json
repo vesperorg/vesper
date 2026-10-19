@@ -1,0 +1,47 @@
+{
+  "coin": {
+    "name": "Vesper",
+    "ticker": "tVESP",
+    "decimals": 8,
+    "address_prefix": "tvsp"
+  },
+  "consensus": {
+    "genesis_timestamp": 1792377360,
+    "genesis_message": "Vesper testnet-1 - test coins, no value - begun after Bitcoin block 972096 000000000000000000016fadf5ba032191be819fb3ce74179e420ace9166dec4",
+    "block_reward": "50",
+    "halving_interval_blocks": 2000,
+    "target_block_seconds": 30,
+    "difficulty_halflife_seconds": 600,
+    "initial_difficulty": 4096,
+    "min_difficulty": 16,
+    "max_block_transactions": 200,
+    "min_fee": "0.00001",
+    "max_future_seconds": 120,
+    "ring_size": 32,
+    "output_lock_blocks": 10,
+    "pow": {
+      "algorithm": "argon2id",
+      "memory_kib": 32768,
+      "passes": 1
+    },
+    "dev_fund": {
+      "percent": 10,
+      "duration_blocks": 4204800,
+      "address": ""
+    },
+    "network": "testnet-1"
+  },
+  "network": {
+    "host": "127.0.0.1",
+    "port": 8880,
+    "peers": [],
+    "sync_interval_seconds": 15
+  },
+  "mining": {
+    "reward_address": "",
+    "auto_start": false,
+    "hashes_per_check": 20000,
+    "processes": 0
+  },
+  "data_dir": "data"
+}

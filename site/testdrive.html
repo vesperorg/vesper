@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vesper Test Drive</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a lab notebook. Numbered steps because the order is the experiment; real terminal output in mono blocks; a viewpoint table; break-it exercises with expected results. Dusk palette, dark-first. */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; }
+  .paper { max-width: 72ch; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  h1 { font-size: clamp(36px, 6vw, 58px); line-height: 1.05; margin: 0 0 10px; }
+  h2 { font-size: 27px; line-height: 1.15; margin: 48px 0 12px; }
+  h3 { font-size: 19px; margin: 26px 0 8px; }
+  h3 span { color: var(--accent); font-family: var(--mono); font-size: 13px; margin-right: 10px; }
+  p { margin: 0 0 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  .meta { color: var(--muted); font-size: 14px; margin-bottom: 24px; font-family: var(--mono); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+  pre { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.55; margin: 10px 0 16px; }
+  pre.out { border-left: 3px solid var(--ok); }
+  pre.cmd { border-left: 3px solid var(--accent); }
+  .lab { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 10px 0 -4px; }
+  .note { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 16px 0; font-size: 15.5px; }
+  .note.warn { border-color: var(--warn); } .note.good { border-color: var(--ok); }
+  .tablewrap { overflow-x: auto; margin: 16px 0 20px; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .ex { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+  .ex h4 { margin: 0 0 6px; font-size: 16px; font-family: var(--body); font-weight: 600; }
+  .ex p { margin: 0 0 6px; font-size: 15px; }
+  .ex .exp { color: var(--ok); font-size: 14.5px; }
+  .lesson { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; }
+  .lesson .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; min-width: 0; }
+  .lesson .card b { display: block; margin-bottom: 4px; }
+  .lesson .card p { margin: 0; font-size: 15px; color: var(--muted); }
+  .lesson .card .q { color: var(--accent); margin-top: 6px; font-size: 14.5px; }
+  footer { color: var(--muted); font-size: 14px; margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); }
+</style>
+
+<div class="wrap">
+  <div class="paper">
+    <div class="eyebrow">Vesper &middot; VESP &middot; hands-on</div>
+    <h1>Send a private payment to another person, and see what everyone else sees.</h1>
+    <div class="meta">Real output from a run on 19 October 2026 on node v0.9.0 with phases 1 to 4 active (ring size 32, testnet-1 settings), two nodes on one PC. Your numbers will differ; the shape will not.</div>
+    <p>This is the test to run before trusting a word on the other pages. Two wallets, two nodes, one payment each way, then four viewpoints: the sender, the receiver, the receiver's accountant holding only a view key, and a stranger reading the raw chain file. At the end you try to break it.</p>
+
+    <h2>Setup, about five minutes</h2>
+    <p>Everything below runs in a terminal opened in the <code>vesper</code> folder. On one PC, "Alice" is the normal folder and "Bob" is a second data folder with a second node. On two PCs, Bob runs the same commands on his own machine and points his node at Alice's, see the note at the end of this section.</p>
+    <div class="lab">Alice: wallet and node 1 (mines)</div>
+<pre class="cmd">wallet.bat                      (creates data\wallets\default.json, shows Alice's tvsp2... address and her recovery code)
+start_node.bat                  (node + explorer at http://127.0.0.1:8880, mining to Alice)</pre>
+    <div class="lab">Bob: his own wallet and node 2</div>
+<pre class="cmd">python coin.py --data-dir data2 wallet new
+start_node2.bat                 (node 2 at http://127.0.0.1:8881, peer of node 1, does not mine)</pre>
+    <p>Bob's commands always carry <code>--node http://127.0.0.1:8881 --data-dir data2</code>. Alice's carry nothing. Keep both node windows open; they are the network. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a brand-new chain refuses its first payment until 32 such coins exist: about 42 blocks, ten to twenty minutes of mining. The wallet tells you plainly when a coin is "not yet 10 blocks old." If your nodes are on testnet-1 instead of a chain of their own, the coins already exist and you skip the wait.</p>
+    <div class="note">Recorded on node v0.9.0 (44 self-test checks) on 19 October 2026 by <code>python testdrive.py</code>, which runs exactly these steps on two throwaway nodes with a throwaway network of their own (it says "test-drive" where your nodes say "testnet-1"); its folder and port names are shown below as they are in the setup above. Long keys and identifiers are trimmed; block numbers and balances depend on the run and will differ on yours. Test coins are tVESP and worth nothing.</div>
+    <div class="note">Two real computers on the same Wi-Fi: Alice starts her node with <code>python node.py --host 0.0.0.0 --mine</code>, finds her PC's address with <code>ipconfig</code>, and Bob starts his with <code>python node.py --peer http://ALICES-IP:8880</code>. The nodes talk plain HTTP with no authentication; they now have per-address limits and bans, but they have never met strangers, so keep this to your own network until the public testnet. Do not want to type any of this? <code>testdrive.bat</code> runs the whole test on two throwaway nodes by itself, about five minutes, and deletes its folders afterwards.</div>
+
+    <h2>The test</h2>
+
+    <h3><span>STEP 1</span>Alice has coins</h3>
+<pre class="cmd">python coin.py info</pre>
+<pre class="out">Vesper (tVESP)  node http://127.0.0.1:8880  v0.9.0
+Network      : test-drive   (test coins: no value, ever)
+Privacy      : receivers HIDDEN, amounts HIDDEN, senders HIDDEN
+Ring size    : every input hides among 32 outputs
+Spend lock   : a new output can be used 10 block(s) after the one that made it (about 5 min); 32 of 41 are old enough now
+Curve maths  : libsodium
+Proof of work: argon2id, 32 MiB of memory per try
+Dev fund     : off
+Height       : 41   (tip c79dae142a0bed274f21...)
+Difficulty   : 3,228 tries per block now, 3,330 next   (chain work 2^16.27)
+Block time   : target 30s, recent average 6.2s
+Supply       : 2050 tVESP of 199999.99978 tVESP max, in 41 output(s); 0 spent so far, and nobody can tell which
+Next reward  : 50 tVESP   (halving in 1958 blocks)
+Mempool      : 0 waiting transaction(s)
+Peers        : http://127.0.0.1:8881
+Miner   : RUNNING  358 tries/s  41 block(s) found</pre>
+    <p>Forty-one blocks, forty-one outputs, all Alice's, and the node that holds them cannot say so. Thirty-two are old enough to spend, so from here on the chain can hide a payment in a full ring; it took 176 seconds of the test drive's fast mining to get there. The 358 tries a second is Argon2id at 32 MiB per try on eight worker processes: slow on purpose. (The 6-second blocks are the test drive's fast setting; the rule targets 30 seconds.)</p>
+
+    <h3><span>STEP 2</span>Alice pays Bob</h3>
+<pre class="cmd">python coin.py send tvsp2f9N5j8UVjuDi2mBMTcx2SZAhg1F3cebrju7...ezhrdiN 12.5</pre>
+<pre class="out">Sent 12.5 tVESP
+Fee  0.00001 tVESP (goes to whoever mines the block)
+txid a6440a6718e413d5acc13f916ad913452a634ea71169740e3572d4b3faf5f6a6
+On the chain this is: 1 input(s) -> 2 sealed output(s). No address, no amount, and no spent output
+appears anywhere: each input points at a ring of 32 outputs and proves it owns one, without saying which.
+Only the fee is public. One output is the payment, one is your change (even when the change is zero),
+in random order. Sealing, proving and ring-signing took 0.36s.
+On the network: your node passed it quietly to ONE peer, which passes it on in turn, and another node,
+usually several hops away, broadcasts it. The first broadcast does not come from your computer.</pre>
+    <p>The last two lines are phase 4. Alice's node did not shout the payment to everyone; it handed it to one peer, and that peer broadcast it. With two nodes the path is one hop; on a real network it is several, and the node that broadcasts first is not the sender's.</p>
+
+    <h3><span>STEP 3</span>Bob sees it on his own node</h3>
+<pre class="cmd">python coin.py --node http://127.0.0.1:8881 --data-dir data2 wallet show</pre>
+<pre class="out">Wallet  : default
+Address : tvsp2f9N5j8UVjuDi2mBMTcx2SZAhg1F3cebrju7jB4faTFG8MyJsaFW5rq33MhN5W8NTqrAMr62qWVbvNWkx8AYNA5ezhrdiN
+File    : data2\wallets\default.json  (encrypted)
+Balance : 12.5 tVESP   (1 unspent output(s) of yours among 45 on the chain; 45 new one(s) read in 0.0s)
+          1 of them (12.5 tVESP) arrived in the last 10 blocks and can be spent once they are that old
+           12.5 tVESP   sealed        one-time key b6e38e6d9ab5df...   from tx a6440a6718e4...</pre>
+    <p>Forty-five outputs on the chain, one is his, and his node learned nothing from the question: it handed over the new blocks and Bob did the finding at home. Next time it will hand over only the blocks since this look; the wallet keeps an encrypted notebook of what it has already read. That is his whole 98-character address above, the only place it ever appears.</p>
+
+    <h3><span>STEP 4</span>Bob's accountant, with a view key only</h3>
+<pre class="cmd">python coin.py --node http://127.0.0.1:8881 --data-dir data2 wallet export-view
+python coin.py --node http://127.0.0.1:8881 watch data2\wallets\default.viewkey.json</pre>
+<pre class="out">View key written to data2\wallets\default.viewkey.json
+Whoever holds that file can SEE every payment to your address and its amount, forever, and can never spend any of it.
+It also carries the spent markers of the 1 output(s) you hold today, so its holder can see when those are spent.
+Outputs you receive later show as 'spent status unknown' to them until you export a fresh file.
+
+Watching address tvsp2f9N5j8UVjuDi2mBMTcx2SZAhg1F3cebrju7... with a view key only
+Balance : 12.5 tVESP   (1 unspent output(s) of yours among 45 on the chain; 45 new one(s) read in 0.1s)
+          1 of them (12.5 tVESP) arrived in the last 10 blocks and can be spent once they are that old
+           12.5 tVESP   sealed        one-time key b6e38e6d9ab5df...   from tx a6440a6718e4...
+(A view key opens the sealed amounts of this address. It still cannot spend any of it.)</pre>
+
+    <h3><span>STEP 5</span>A stranger reads the raw chain file</h3>
+    <p>One block per line, plain text. Search it for both addresses and the amount in every form it could take:</p>
+<pre class="cmd">findstr /c:"(30 characters of Alice's address)" data2\chain.jsonl
+findstr /c:"f9N5j8UVjuDi2mBMTcx2SZAhg1F3ce" data2\chain.jsonl     (30 characters of Bob's address)
+findstr /c:"1250000000" data2\chain.jsonl                          (12.5 tVESP in base units)
+findstr /c:"12.5" data2\chain.jsonl</pre>
+<pre class="out">30 characters of Alice's address     found 0 time(s)
+30 characters of Bob's address       found 0 time(s)
+12.5 tVESP in base units             found 0 time(s)
+12.5                                 found 0 time(s)</pre>
+
+    <h3><span>STEP 6</span>What the transaction actually contains</h3>
+<pre class="cmd">python coin.py tx a6440a6718e413d5...</pre>
+<pre class="out">txid a6440a6718e413d5... | transfer | in block 43, 1 confirmation(s) | inputs: 1 | outputs: 2 | fee: 0.00001 tVESP
+  input 0  : one of a ring of 32 outputs, e.g. 176ec87cae..., 1b360522b7..., 24f08284eb...
+            spent marker (key image) 79547d2a8209347892cc4123...   pseudo commitment 325a2b31abd66d87...
+            signature: c + 32 s-values + D   (which of the 32 it was: not written anywhere)
+  output 0 : one-time key b6e38e6d9ab5df...   sealed amount
+  output 1 : one-time key fa6ba22488dfa6...   sealed amount
+  one 736-byte proof that none of the 2 sealed amounts is negative
+  size: 7303 bytes of JSON   (add --json to see every field)</pre>
+    <p>The input no longer says which output it spends. It lists 32 existing outputs in sorted order and carries one ring signature proving the signer owns one of them, plus a key image: a one-way marker of the real output that lets every node refuse a second spend without learning which output it marks. The two outputs are sealed, with one 736-byte proof that neither hidden value is negative. Output 0 is the key Bob's wallet recognised in step 3; nothing in this listing says so, and the other output is Alice's change. Which of the 32 was really spent: not knowable from this.</p>
+
+    <h3><span>STEP 7</span>Bob pays some back, from his node</h3>
+<pre class="cmd">python coin.py --node http://127.0.0.1:8881 --data-dir data2 send tvsp2...(Alice's address) 3</pre>
+    <p>Not yet: Bob's 12.5 is inside the 10-block lock, and the wallet says so. Once it is 10 blocks old:</p>
+<pre class="out">Sent 3 tVESP
+Fee  0.00001 tVESP (goes to whoever mines the block)
+txid 901fcf39ef5801bf8f460f9053f13ddd3aa48a7a5bb8c00ed9e3c300e4d6a5d1
+On the chain this is: 1 input(s) -> 2 sealed output(s). No address, no amount, and no spent output
+appears anywhere: each input points at a ring of 32 outputs and proves it owns one, without saying which.
+Only the fee is public. One output is the payment, one is your change (even when the change is zero),
+in random order. Sealing, proving and ring-signing took 0.50s.
+On the network: your node passed it quietly to ONE peer, which passes it on in turn, and another node,
+usually several hops away, broadcasts it. The first broadcast does not come from your computer.</pre>
+    <p>Bob's node handed the payment to its one peer, Alice's, which broadcast it and mined it into the next block. The test drive checks exactly this: Bob's node passed it on instead of broadcasting it.</p>
+
+    <h3><span>STEP 8</span>Balances after, spend key and view key</h3>
+<pre class="out">Balance : 9.49999 tVESP   (1 unspent output(s) of yours among 58 on the chain; 25 new one(s) read in 0.1s)
+          1 more output(s) were yours and are spent (12.5 tVESP)
+          1 of them (9.49999 tVESP) arrived in the last 10 blocks and can be spent once they are that old
+        9.49999 tVESP   sealed        one-time key f5da6a56ce1f99...   from tx 901fcf39ef58...</pre>
+    <p>12.5 in, 3 out, the fee gone, 9.49999 of change at a fresh key, locked for 10 blocks like any new coin. The view-key file Bob exported in step 4 carries the key image of the 12.5 output he held then, so his accountant can see that output was spent. The change arrived after the export, so the accountant sees its amount but not whether it has since been spent, until Bob exports a fresh file. That is the honest limit of a view key once senders are hidden.</p>
+
+    <h3><span>STEP 9</span>Bob's node checks everything from its own disk</h3>
+<pre class="cmd">python coin.py --data-dir data2 validate</pre>
+<pre class="out">Re-checking every block in data2 from the genesis block (every proof of work, signature and sum)...
+Chain OK: 55 blocks (height 54), 56 transactions, 58 outputs, 2 spends, chain work 2^16.93, supply 2700 tVESP - checked in 2.6s</pre>
+    <p>Every ring signature, every key image, every sealed-amount sum and every range proof, re-verified from genesis by a computer that never saw an amount or a sender.</p>
+
+    <h2>Who knows what</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Person</th><th>Knows</th><th>Does not know</th></tr></thead>
+        <tbody>
+          <tr><td>Alice (sender)</td><td>She paid Bob 12.5; the one-time key and sealed amount she made</td><td>Bob's balance, his other payments, who else pays him, and now also when he spends what she gave him</td></tr>
+          <tr><td>Bob (receiver)</td><td>He received 12.5 at that one-time key</td><td>Which of the 32 ring members Alice really spent; her address, balance or other payments</td></tr>
+          <tr><td>Bob's accountant (view key)</td><td>Every payment to Bob with amounts, and spends of the outputs the key file was exported with</td><td>Anything about anyone else; cannot spend</td></tr>
+          <tr><td>A stranger with the chain file</td><td>Block 43 has a payment with 1 input (one of 32 outputs) and 2 sealed outputs; the fee</td><td>Who paid, who was paid, how much, which of the 32 was spent</td></tr>
+          <tr><td>The miner</td><td>Same as the stranger, plus that the fee is now theirs</td><td>Same as the stranger</td></tr>
+          <tr><td>The node Bob asked</td><td>Bob's IP address asked for the blocks since his last look and for whole rings when he paid; and when he paid, it received the payment from his node to pass on, so with two nodes it knows where it came from</td><td>Which outputs are Bob's; he scanned at home. On a real network, whether the node that handed it a payment was the sender or just another relay</td></tr>
+          <tr><td>Every other node</td><td>The payment, once a relay broadcast it</td><td>Which node started it: an attacker running a tenth of the nodes guesses right about a tenth of the time</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Now try to break it</h2>
+    <p>Each of these should fail. If one doesn't, you have found something worth the bounty, and the page you are reading is wrong.</p>
+    <div class="ex"><h4>Rewrite history</h4><p>Stop node 2. Open <code>data2\chain.jsonl</code> in Notepad, change one character inside any <code>commitment</code>, <code>range_proof</code> or <code>signature</code>, save, then run <code>python coin.py --data-dir data2 validate</code>.</p><p class="exp">Expected, from the run: "INVALID: block 43 of the saved chain breaks a rule: txid does not match the transaction contents." Start node 2 again and it logs that block 43 was damaged, keeps the good blocks before it, sets the file aside as <code>chain.jsonl.damaged-&lt;time&gt;</code> and fetches the rest from node 1.</p></div>
+    <div class="ex"><h4>Spend more than you have</h4><p>As Bob: <code>send vespALICE 50</code> when he holds 9.49999, still inside the lock.</p><p class="exp">Expected, from the run: "insufficient funds: have 0 tVESP, need 50.00001 tVESP (amount + fee). Another 9.49999 tVESP is yours but cannot be spent yet: it is less than 10 blocks old, or already in a payment that is waiting to be mined. Try again in a few minutes." Refused before it leaves the wallet.</p></div>
+    <div class="ex"><h4>Spend the same output twice</h4><p>Send a payment as Bob, and before it is mined send another from the same wallet.</p><p class="exp">Expected: the wallet refuses to reuse a coin that is already in a waiting payment. Build two payments from one coin by hand and the node refuses the second with "key image already used: that output was spent before (double spend)." The node never learned which output; the marker alone was enough.</p></div>
+    <div class="ex"><h4>Replay a payment</h4><p>Take the JSON of a confirmed transaction from <code>coin.py tx TXID</code> and post it to a node again.</p><p class="exp">Expected, from the run: "transaction is already in the chain."</p></div>
+    <div class="ex"><h4>Mistype an address</h4><p>Change a character in the middle of Bob's address and send 1 VESP to it.</p><p class="exp">Expected, from the run: "'tvsp2VdcHL5U4k3NFLmexb7ASiCrvVdqaPktYCLwXBGrQG2...' is not a valid tVESP address (they start with 'tvsp' and are long: two keys plus a checksum)." The checksum catches it. (A valid address that is simply the wrong person's is not caught by anything; copy-paste, never retype.)</p></div>
+    <div class="ex"><h4>Spend with a view key</h4><p>Copy <code>data2\wallets\default.viewkey.json</code> over a spare wallet file and try to send from it.</p><p class="exp">Expected, from the run: "that is a view-key file: it can watch, not spend."</p></div>
+    <div class="ex"><h4>Follow the money</h4><p>In the explorer, open block 43 and look at the payment's input. Try to find which output it spent.</p><p class="exp">Expected: you see 32 candidate outputs and a key image, and no way to pick the real one. Then try the statistical version: decoys are drawn from a measured spending pattern, and an attacker who knows that pattern still names the real coin 3.0% of the time where 3.1% would be fair (<code>python leaktest.py</code> prints the number). This is the known weakness of rings, it is the same one Monero carries, and it is why stage two of phase 3 exists.</p></div>
+
+    <h2>Study path: the same ground, six times, deeper each time</h2>
+    <p>Each session is one idea, one thing to run, and one question to keep asking until you can answer it without the page.</p>
+    <div class="lesson">
+      <div class="card"><b>1. Blocks and proof of work</b><p>Run the learning chain's explorer and watch hashes chain together; change one byte in its chain file and watch validation fail.</p><p class="q">Why is it cheap to check a block and expensive to make one, and why does that protect history?</p></div>
+      <div class="card"><b>2. Keys and signatures</b><p>Run <code>python demo.py</code> and read step 5: a signature that verifies against a key nobody can connect to a person.</p><p class="q">What exactly does a signature prove, and what does it not prove?</p></div>
+      <div class="card"><b>3. Stealth addresses</b><p>Steps 1 to 4 of <code>demo.py</code>, then section 4 of the whitepaper, then steps 3 and 5 of this test.</p><p class="q">Why can Bob find his payment and Eve cannot, when both have the same chain?</p></div>
+      <div class="card"><b>4. Sealed amounts</b><p>Step 6 of this test, then section 5 of the whitepaper: commitments, the balance equation, range proofs.</p><p class="q">If nobody can see the numbers, how does the chain know no coins were created?</p></div>
+      <div class="card"><b>5. Rings and key images</b><p>Step 6 of <code>demo.py</code>, the "spend the same output twice" and "follow the money" exercises, then section 6 of the whitepaper.</p><p class="q">How can a node refuse a double spend without knowing which output was spent, and why is a crowd of 32 not enough?</p></div>
+      <div class="card"><b>6. The network</b><p>Node 2's log, and the two-PC setup. Run <code>python leaktest.py</code> and read the two tables it prints. Then section 7 and the threat model.</p><p class="q">Who sees your IP address when you pay, how often can a spy running a tenth of the nodes still guess it, and what does hiding it cost in time?</p></div>
+    </div>
+    <div class="note good">When you can answer all six questions out loud, you can defend Vesper to anyone. When you find one you can't, that is the next thing we work on.</div>
+
+    <footer>Vesper test drive, October 2026. Output recorded by <code>testdrive.py</code> from a real two-node run on node v0.9.0 at testnet-1 settings (19 October 2026), which ended "14 of 14 checks behaved as the test drive page says"; shortened only by trimming long keys and identifiers and by showing its throwaway folder and ports under the names used above.</footer>
+  </div>
+</div>
+
+</body>
+</html>

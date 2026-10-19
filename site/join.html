@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Vesper</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a recruiting page with nothing to sell. Four ways in, each a card with a first step; the founding-node roll; the bounty rules; a dated dev log that is the project's heartbeat. Dusk palette, dark-first. */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a; --ink-on-accent: #1a1300;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; --ink-on-accent: #fff8ea; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; }
+  .measure { max-width: 68ch; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(38px, 6.5vw, 68px); line-height: 1.04; }
+  h2 { font-size: clamp(26px, 4vw, 38px); line-height: 1.12; margin-bottom: 14px; }
+  h3 { font-size: 20px; margin-bottom: 8px; }
+  p { margin: 0 0 14px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: var(--mono); font-size: 0.92em; }
+  code { font-family: var(--mono); font-size: 0.9em; background: var(--surface2); padding: 1px 6px; border-radius: 6px; }
+  .top { padding-block: clamp(56px, 10vw, 110px) 44px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, color-mix(in srgb, var(--accent2) 10%, transparent), transparent 70%); }
+  .top p.lede { font-size: clamp(18px, 2.2vw, 22px); max-width: 62ch; margin-top: 20px; }
+  .nav { font-family: var(--mono); font-size: 13px; margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .nav a { text-decoration: none; }
+  section { padding-block: clamp(44px, 7vw, 80px); border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+  .ways { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 22px; }
+  .way { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .way .n { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 8px; }
+  .way p { font-size: 15px; color: var(--muted); margin: 0 0 10px; }
+  .way .first { font-size: 14.5px; color: var(--fg); background: var(--surface2); border-radius: 10px; padding: 10px 12px; }
+  .status { display: inline-block; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .status.soon { color: var(--accent); border-color: var(--accent); }
+  .roll { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .roll .empty { color: var(--muted); font-style: italic; }
+  .rules { margin-top: 18px; }
+  .rules li { margin-bottom: 8px; }
+  .log { margin-top: 20px; border-left: 2px solid var(--line); padding-left: 18px; }
+  .entry { position: relative; margin-bottom: 18px; }
+  .entry::before { content: ""; position: absolute; left: -24px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .entry .d { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+  .entry h4 { margin: 2px 0 4px; font-size: 16px; font-family: var(--body); font-weight: 600; }
+  .entry p { margin: 0; font-size: 15px; color: var(--muted); }
+  .nobuy { margin-top: 22px; background: var(--surface); border: 1px solid var(--warn); border-radius: 14px; padding: 18px 20px; }
+  .nobuy b { color: var(--warn); }
+  pre { background: var(--surface2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; margin: 14px 0 0; }
+  footer { padding-block: 36px 56px; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="top">
+  <div class="wrap">
+    <div class="nav"><a href="index.html">What Vesper is</a><a href="launch.html">Launch plan</a><a href="whitepaper.html">Whitepaper</a><a href="testdrive.html">Test drive</a></div>
+    <div class="eyebrow">Vesper &middot; VESP &middot; join</div>
+    <h1>Join Vesper before it has a price.</h1>
+    <p class="lede">There is nothing to buy and nothing will be sold. What there is: code you can read in an afternoon, a chain you can run tonight, and a project that pays people to break it. If you want a place in a privacy coin's history rather than a bag of its coins, this is the door.</p>
+  </div>
+</div>
+
+<section id="ways">
+  <div class="wrap">
+    <div class="eyebrow">Four ways in</div>
+    <h2 class="measure">Pick the one that matches what you know.</h2>
+    <div class="ways">
+      <div class="way"><div class="n">READ AND REVIEW</div><h3>Break the math</h3><p>Stealth addresses, sealed amounts, rings of 32, key images, a Dandelion++ relay, Argon2id. All of it in Python, with a test that lists what the chain still leaks. If you know elliptic curves or zero-knowledge proofs, this is the most valuable hour anyone can give before genesis.</p><div class="first">First step: read the whitepaper and <code>privacy.py</code>, then tell us what is wrong. Bugs that beat the leak list are paid (see the bounty).</div></div>
+      <div class="way"><div class="n">RUN AND MINE</div><h3>Be a node from the start</h3><p>Testnet-1 is launching: test coins (tVESP) that are worthless by design, on a real network. What you give is a network to attack. Everyone who runs a node through the testnet goes on the founding-node roll, by handle, forever.</p><div class="first">First step: run <code>testdrive.bat</code> on your own PC today (two throwaway nodes, a payment each way, five break-it attempts, about five minutes), then start a node with <code>start_node.bat</code>; it joins testnet-1 through the seed node once that address is in <code>config.json</code>, see below.</div></div>
+      <div class="way"><div class="n">BUILD</div><h3>Make the things a coin needs</h3><p>A desktop wallet people can use, a mobile wallet, atomic swaps, mining-pool support, a better explorer, translations. The development fund pays on delivery, in public, once it exists; before that, the roll and the credit are what there is.</p><div class="first">First step: open an issue describing what you want to build. The fund's grant rules follow the Monero model: propose, deliver, get paid.</div></div>
+      <div class="way"><div class="n">USE</div><h3>Need private money, later</h3><p>If you need payments nobody can read, you are who this is for, and you arrive last: after the audit, after the hardened node, after a wallet that does not need a terminal. Follow the dev log; it will say when.</p><div class="first">First step: nothing yet. Do not buy anything from anyone claiming to sell VESP.</div></div>
+    </div>
+    <div class="nobuy"><b>Read this.</b> Vesper has no token, no presale and no sale of any kind. Testnet-1's tVESP have no value, ever; anyone offering tVESP or VESP for money is not us. The only way to get VESP on day one, if a real network ever exists, is to mine it.</div>
+  </div>
+</section>
+
+<section id="roll">
+  <div class="wrap">
+    <div class="eyebrow">Founding-node roll</div>
+    <h2 class="measure">The people who ran it before it was anything. <span class="status soon">opens with testnet-1</span></h2>
+    <p class="measure">Run a node on testnet-1, by handle or by name, and you are listed here permanently. No coins, no tiers, no cost. Projects are defended by the people whose names are on them. To be listed, open an issue in the repository titled "founding node" with your handle; a node of yours has to have been seen on the network.</p>
+    <div class="roll">
+      <p class="empty">Empty until testnet-1's seed node is up. The first entry will be the project's own seed node, listed like everyone else's.</p>
+    </div>
+  </div>
+</section>
+
+<section id="bounty">
+  <div class="wrap">
+    <div class="eyebrow">The trace-me bounty</div>
+    <h2 class="measure">Find a leak the test does not list, get paid in public. <span class="status soon">pool announced with the seed node</span></h2>
+    <p class="measure">Vesper publishes exactly what its chain still reveals: the sender's crowd is 32, the fee, input and output counts, mining reward amounts, which block a payment landed in; and on the network, each node's address to its peers unless it runs through Tor, with the first broadcast of a payment coming from a relay rather than the sender (the measured leak is on the Breaking page). The bounty is for anything beyond that list.</p>
+    <ol class="rules">
+      <li><b>What counts.</b> From chain data alone, or chain data plus what a dishonest node can see, show the receiver, the amount, or the sender of a payment with better odds than the published leak list allows; or create coins; or spend coins you do not own; or double spend. A write-up with a reproducible method is a claim. A hunch is not.</li>
+      <li><b>What does not count.</b> Things on the leak list, phishing a wallet file, compromising a user's machine, denial of service against the unhardened test node, or anything the whitepaper's threat model already states is out of scope.</li>
+      <li><b>Disclosure.</b> Report privately first. You get credit, by name or handle, when the fix ships. Public disclosure before a fix forfeits the bounty but not the credit.</li>
+      <li><b>Payment.</b> Prize pool announced when the testnet opens, funded by the founder and by donations until the development fund exists, paid in public with the claim and the fix linked. Severity decides the amount; the first proven trace of a payment pays the top tier.</li>
+      <li><b>Referrals.</b> If someone you brought in claims a bounty, you are paid too. This is the only referral program Vesper will ever have: a reward for finding problems, not for bringing buyers.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="testnet">
+  <div class="wrap">
+    <div class="eyebrow">Running a node</div>
+    <h2 class="measure">Testnet-1: what it is and how to join.</h2>
+    <p class="measure"><b>What it is.</b> A real Vesper network with test coins, tVESP, whose addresses start <span class="mono">tvsp2</span>. They have no value and never will; a real network, if there is one, gets its own genesis, ticker and addresses. Ring size 32. The genesis block was made by <code>launch_genesis.py</code>: its message names the newest Bitcoin block at the launch moment (two block explorers had to agree) and the launch time, so nobody could have mined before it; the exact Bitcoin block and the genesis ID are in <code>README.md</code> and printed by <code>python coin.py info</code>, and every node checks them. Starting difficulty 4,096 tries, from measured test mining.</p>
+    <p class="measure"><b>How to join.</b> Python 3.10 or newer, two packages, and one command. The node has per-address limits, bans, connection timeouts and a peer table built for strangers; testnet-1 is where they meet real ones for the first time.</p>
+<pre>git clone https://github.com/vesperorg/vesper
+cd vesper
+pip install -r requirements.txt
+python selftest.py                           (44 checks; the seed node refuses to start if these fail, so should you)
+python coin.py wallet new                    (write the recovery code on paper; anyone who sees it can spend)
+python node.py --mine                        (finds the network through the seed node listed in config.json)
+python node.py --mine --proxy socks5h://127.0.0.1:9050   (the same, through Tor)
+python testdrive.py --more                   (the whole test drive on a private chain of its own, 17 checks)</pre>
+    <p class="measure muted">The seed node's address (<span class="mono">SEED-NODE-ADDRESS</span>, a rented server, never a home connection) is published here and in <code>config.json</code> the day the server is up; until then the same commands run a chain of your own, and <code>--peer</code> joins any node a friend runs. <b>What to try:</b> the test drive, then every line of Breaking Vesper. Anything that behaves differently from those pages is a bounty claim.</p>
+  </div>
+</section>
+
+<section id="log">
+  <div class="wrap">
+    <div class="eyebrow">Dev log</div>
+    <h2 class="measure">What shipped, with dates. This is the heartbeat.</h2>
+    <div class="log">
+      <div class="entry"><div class="d">2026-10-19</div><h4>Code published; testnet-1 launching</h4><p>The repository is public under the Vesper organisation on GitHub, with these pages served from it. Node v0.9.0, 44 self-test checks, MIT licence; every push re-runs the checks in public on Windows and Linux. The first public commit is the dated record of what existed. The seed node follows on a rented server; its address lands here and in <code>config.json</code> the day it is up.</p></div>
+      <div class="entry"><div class="d">2026-10-18</div><h4>Testnet-1 decided and built: ring of 32</h4><p>Three decisions by the founder: a public testnet first, ring size 32 (measured: a node accepts a payment in 54 ms, 7.3 kB per payment, an informed attacker names the real coin 3.0% of the time where 3.1% is fair), and a seed node on a rented server. Test coins tVESP with <code>tvsp2</code> addresses. <code>launch_genesis.py</code> ties the genesis block to the newest Bitcoin block at launch. <code>deploy/</code> holds the seed-node kit for an Ubuntu server: it refuses to start if the self-test fails, opens only SSH and 8880, mines on one core. The automated test drive now runs on a network of its own, so it can never join testnet-1 by accident. Node v0.9.0.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Node v0.8.0: review fixes, 44 checks</h4><p>A silent connection is closed after 20 s and one address holds at most 8 of 64 slots: before, a slowloris attack of 64 idle connections locked every peer and wallet out. Blocks are at most 4,000,000 bytes, a consensus rule: a valid 18 MB block that no node could relay was possible. Peer answers capped at 16 MB. 9,500 malformed requests against every API route: no crashes.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Payment proofs and recovery codes</h4><p><code>proof pay</code> lets a payer prove that one output paid one address an amount, and nothing else; the receiver can do the same from a view key; six forgeries fail in the self-test. A new wallet shows a 55-character recovery code once: the code is the wallet, on any computer. A payment spends from one of the wallet's addresses when one holds enough, so payers comparing rings cannot link your addresses.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Peer table, sorted inputs, Tor</h4><p>Addresses from gossip are candidates checked two a round, at most 2 peers per network block, never home addresses on a public node, so one attacker cannot fill a node's peer table. Inputs are listed in key-image order: the old order said which hidden input was bigger. <code>--proxy</code> sends every connection through Tor, name lookups included, and a hidden node stops announcing its address. Node v0.7.0, 42 checks.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Addresses v2: as many as you like</h4><p>Subaddresses: give each payer their own address, all unlinkable, one wallet, one view key. Each output has its own R from a sealed anchor, which closes the Janus attack Monero's subaddresses still carry. One-byte view tags halve scanning time. Addresses now start <code>vesp2</code>. Node v0.6.0.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>One range proof per payment; the test drive runs itself</h4><p>Aggregated Bulletproofs: 736 bytes for a payment's outputs instead of 672 each; a payment is 5.1 kB of JSON; a fresh node checks a block at 15.1 ms per payment. <code>python testdrive.py</code> runs the whole public test drive on two throwaway nodes, 14 checks, five minutes. Node v0.5.0.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Decoys drawn from measured spending</h4><p>Decoys were picked by rank; against an attacker who knows how people spend, the real coin was named 7.3% of the time on a young chain and 22% on a busy year-old one. Now drawn as ages from the spending distribution Monero's wallets use: 7.2%, 6.5%, 6.1%. Fair for a ring of 16 is 6.2%.</p></div>
+      <div class="entry"><div class="d">2026-10-15</div><h4>Phase 4: network privacy, built and measured</h4><p>A payment travels quietly from node to node before any node broadcasts it (Dandelion++). <code>leaktest.py</code> runs the node's own routing code in a 200-node simulation: an attacker with 10% of the nodes names the sender's node 11% of the time, 25% without the stem. A trace-back leak in the first version (a "loop" answer that revealed which nodes held a payment) was found and closed the same day, before any network ran it. Per-address limits and bans; mining on several cores, 300 to 420 tries a second on eight. Node v0.4.0, 37 checks.</p></div>
+      <div class="entry"><div class="d">2026-10-14</div><h4>Check-everything pass before publication</h4><p>33 of 33 self-test checks; the whole test drive re-run live on two nodes. A damaged chain file no longer stops a node: it keeps the good blocks, sets the file aside and fetches the rest from peers. Readable transaction summaries. The seven out-of-date statements found on these pages were corrected.</p></div>
+      <div class="entry"><div class="d">2026-10-12</div><h4>Join and Breaking pages; code prepared for publication</h4><p>MIT licence, repository assembled, proof-of-existence fingerprints written. <b>Planned:</b> the code goes public under the Vesper organisation on GitHub; the first public commit is the dated record. Until then the link above is a placeholder.</p></div>
+      <div class="entry"><div class="d">2026-10-11</div><h4>Second review pass: node v0.3.0, 33 checks</h4><p>Per-block difficulty (ASERT-style, 10-minute half-life). 10-block spend lock. Wallets read only new blocks with an encrypted notebook. Rings fetched whole. Block-ID collision and junk-block DoS designed out. Reorganisations cost branches, not the chain. Power-cut-safe saves. Wallet passwords stretched 8x harder.</p></div>
+      <div class="entry"><div class="d">2026-10-11</div><h4>Proof of work switched to Argon2id</h4><p>32 MiB per try, about 90 tries a second per laptop core. Bitcoin mining chips cannot run it. Interim; RandomX likely for production.</p></div>
+      <div class="entry"><div class="d">2026-10-11</div><h4>Phase 3, stage one: hidden senders</h4><p>CLSAG-style rings of 16 and key images. A payment no longer names the output it spends. 20 checks at the time; 640-byte signatures; 35 ms to accept a payment.</p></div>
+      <div class="entry"><div class="d">2026-10-11</div><h4>Development fund as a glass box</h4><p>10% of each reward for 4,204,800 blocks, paid to an auditable one-time key, enforced by consensus. Fund spends are public on chain.</p></div>
+      <div class="entry"><div class="d">2026-10-11</div><h4>Phase 2: hidden amounts</h4><p>Pedersen commitments, Bulletproofs range proofs (672 bytes, batch-verified), two-plus shuffled outputs per payment, view keys open amounts. libsodium backend. 18 checks.</p></div>
+      <div class="entry"><div class="d">2026-10-10</div><h4>Phase 1: stealth addresses and view keys</h4><p>No address ever on chain. Two nodes, one payment each way, a stranger finds nothing in the chain file. 13 checks. Named Vesper; ticker later changed to VESP after collisions with Vesper Finance (VSP) and the bolivar (VES).</p></div>
+      <div class="entry"><div class="d">2026-10-05</div><h4>A learning chain first</h4><p>A complete transparent cryptocurrency in Python, 15 checks, built to understand blocks, proof of work and signatures before adding privacy. Vesper runs on its engine.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Vesper, October 2026. Nothing for sale, ever. If you want in, read, run, build, or break.</div>
+</footer>
+
+</body>
+</html>

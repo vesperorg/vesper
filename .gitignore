@@ -1,0 +1,14 @@
+# chain data, wallets, scan notebooks: never commit
+data/
+data*/
+*.scan
+*.viewkey.json
+# runtime
+__pycache__/
+*.log
+*.tmp
+.env
+node_modules/
+*.rings
+_claude_review/
+*.sent
