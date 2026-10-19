@@ -113,7 +113,8 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-gh api -X POST repos/%ORG%/%REPO%/pages -f "source[branch]=master" -f "source[path]=/site" >nul 2>nul
+rem GitHub Pages is deployed by .github/workflows/pages.yml from the site folder (branch-based Pages cannot serve /site).
+gh api -X POST repos/%ORG%/%REPO%/pages -f build_type=workflow >nul 2>nul
 rem Move the private history out of the repository: a bundle in the private folder, then purge.
 for /f "usebackq tokens=*" %%d in (`powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmm')"`) do set STAMP=%%d
 git bundle create "%PRIV%\private-history-%STAMP%.bundle" private-history >nul 2>nul

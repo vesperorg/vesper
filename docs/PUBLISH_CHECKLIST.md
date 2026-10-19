@@ -6,6 +6,10 @@
 - **History is squashed at publish.** `publish_github.bat` turns everything into ONE fresh commit before the first push. The older local commits, which carried a real name as author, stay on the local branch `private-history` and never leave this PC.
 - **Owner: a GitHub organisation.** "vesper org" as asked. Checked 2026-10-13: `vesper-org` and `vesper` are taken; `vesperorg`, `vesper-coin` and `vespercoin` are free. The script defaults to `vesperorg`.
 
+## Published
+
+2026-10-19 20:23 UTC: https://github.com/vesperorg/vesper, one commit (b85ed4f) authored Vesper, pushed by the pseudonymous account; the self-test workflow passed on Windows and Linux on the first run. The site is served by GitHub Pages from `site/` through `.github/workflows/pages.yml` at https://vesperorg.github.io/vesper/ (branch-based Pages can only serve `/` or `/docs`, so the publish script's original Pages call failed and was replaced). Private history is in `../vesper-private/private-history-20261019-2023.bundle`. Steps 0 to 7 below are done; 8 and 9 remain.
+
 ## Still to do (one line back to Claude for each)
 
 0. **Install the GitHub CLI** (it is not on this PC yet): open a terminal and run `winget install GitHub.cli`, then close and reopen the terminal. The publish script checks for it and stops with this same instruction if it is missing.
