@@ -2,31 +2,48 @@
 
 [![self-test](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml/badge.svg)](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml) Code: https://github.com/vesperorg/vesper - Site: https://vesperorg.github.io/vesper/
 
-On Vesper's chain there is no "who", no "how much", and no "which coin". Every payment lands at a
-one-time key only the receiver can recognise, every amount is sealed in a commitment that nodes
-can add up but never read, and a payment never says which output it spends: it points at a ring
-of 32 and proves it owns one. The code is plain Python, written so each trick can be followed.
+Vesper is a cryptocurrency whose public ledger records a payment without recording who paid, who
+was paid, or how much. It does this with three pieces, each of which you can read in the code:
 
-**Test network: testnet-1.** The coins are test coins, `tVESP`, with addresses that start `tvsp`.
-They have no value and never will. Its genesis block names Bitcoin block 972,096
-(`000000000000000000016fadf5ba032191be819fb3ce74179e420ace9166dec4`), so nobody could have mined
-it before that block existed. Genesis block ID:
-`c1b12e33659264634e4e2be4bbaba5fcc637ef59ef6168d1c2db72f6f2830252`. To join: install, run
-`start_node.bat` (or `python node.py`), and the node finds the network through the seed nodes in
-`config.json`. A real network, if there ever is one, will have its own genesis and its own
-addresses.
+- **Who was paid is hidden.** A payment is not sent to your address. The sender uses your address
+  to compute a fresh one-time lock that only your wallet can recognise and only your spend key can
+  open. Your address itself never appears on the chain, and two payments to you look unrelated.
+- **How much is hidden.** Each amount is sealed inside a *commitment*: a value the chain can add up
+  (so it can check that what went in equals what came out, plus the fee) but cannot read. A short
+  proof attached to each payment shows no sealed amount is negative, so nobody can print coins.
+- **Which coin was spent is hidden.** A payment does not name the coin it spends. It points at 32
+  possible coins (its own plus 31 decoys) and carries a *ring signature*, a proof that the sender
+  owns one of the 32 without saying which, plus a one-way *spent marker* that lets every node
+  refuse a second spend of the same coin without ever learning which coin it was.
 
-**Not audited. Do not put real value on it yet.** Homemade privacy cryptography is exactly where
-real coins have leaked and lost money, sometimes years after launch. Before any real use: a public
-test network, the stage-two sender proof, a review by an independent cryptographer, and legal advice.
+The code is plain Python, written so each of those tricks can be followed line by line.
 
-**How private is it today, honestly:** Monero's design, with twice its ring. A sender hides among
-32 outputs, not among everyone. Since phase 4 the first broadcast of a payment no longer
-comes from the sender's computer, but an attacker who runs a share of the nodes still guesses the
-sender about that share of the time (`leaktest.py` measures it), and nothing between nodes is
-encrypted: if your internet address matters, run your node with `--proxy` through Tor (built in,
-see below) or a VPN. Give each person who pays you their own address
-(`coin.py wallet new-address`), and comparing notes links nothing.
+**Test network: testnet-1.** This is a test network with test coins called `tVESP`; their addresses
+start `tvsp`. Test coins have no value and never will. The network's first block names Bitcoin block
+972,096 (`000000000000000000016fadf5ba032191be819fb3ce74179e420ace9166dec4`), a block that did not
+exist until minutes before launch, which is how you can check that nobody mined in secret
+beforehand. The first block's own ID is
+`c1b12e33659264634e4e2be4bbaba5fcc637ef59ef6168d1c2db72f6f2830252`; every node checks it. To join:
+install, run `start_node.bat` (or `python node.py`), and the node finds the network through the seed
+nodes listed in `config.json`. A real network, if there ever is one, will start from its own first
+block and use its own addresses, so a test coin can never be mistaken for a real one.
+
+**Not audited. Do not put real value on it yet.** Privacy cryptography written by a small team is
+exactly where real coins have leaked user data and lost money, sometimes years after launch, because
+privacy failures are silent: the chain keeps working while it leaks. Before any real use this needs
+a public test network (this one), the stronger sender proof described below, a review by an
+independent cryptographer, and legal advice.
+
+**How private is it today, honestly:** it is Monero's design with twice Monero's ring. A sender
+hides among 32 coins, not among everyone on the chain, so a statistician with the whole chain still
+has a 1-in-32 shaped problem, not an impossible one. On the network, your payment is first handed
+quietly from node to node before any node announces it to everyone, so the node that announces it
+first is not yours; but an attacker who runs, say, a tenth of all nodes still guesses the right
+origin about a tenth of the time (`python leaktest.py` measures this), and the traffic between nodes
+is not encrypted. If your internet address matters to you, run your node with `--proxy` through Tor
+(built in, see below) or a VPN. Give each person who pays you their own address
+(`coin.py wallet new-address`): the addresses share nothing, so payers who compare notes learn
+nothing.
 
 ## Where it is
 
