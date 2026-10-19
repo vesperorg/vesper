@@ -21,7 +21,7 @@ who was paid, or how much:
 2. **Sealed amounts.** Every amount is sealed like an envelope that the network can add up but
    never open. It can still check that nobody spent more than they had, and a short proof stops
    anyone from printing money with a "negative" amount.
-3. **A crowd of 32.** When you spend, your payment points at a **ring of 32** coins, yours and 31
+3. **A crowd of 48.** When you spend, your payment points at a **ring of 48** coins, yours and 47
    others, and proves you own one of them without saying which. A one-way "spent" stamp stops
    anyone from spending the same coin twice.
 4. **A quiet hand-off.** Your computer does not announce your payment to everyone. It passes it
@@ -31,8 +31,8 @@ who was paid, or how much:
 Your balance and your payments stay yours. A read-only **view key** lets you show them to whoever
 you choose, such as an accountant, without giving anyone the power to spend.
 
-**Where it stands today, honestly:** it is Monero's design with twice Monero's ring, so a payment
-hides among 32 coins, not yet among everyone. It is **not audited**. It runs as a public test
+**Where it stands today, honestly:** it is Monero's design with three times Monero's ring, so a
+payment hides among 48 coins, not yet among everyone. It is **not audited**. It runs as a public test
 network, **testnet-1**, whose coins, **tVESP** (addresses start `tvsp`), are test coins with
 **no value, ever**: anyone can try it, try to break it, and help make it solid before it ever
 carries real money.
@@ -42,9 +42,9 @@ carries real money.
 - **Nothing to see on the chain, and nothing to opt into.** No addresses, no payment amounts, no balances
   on the public record. Zcash made privacy a choice, most people never chose it, and the few who
   did stand out. On Vesper there is no public payment at all, so everyone shares the same crowd.
-- **Twice Monero's crowd, measured in public.** Every payment hides among 32 coins, double
-  Monero's 16. We test how often an attacker who knows how people really spend can pick the real
-  coin: 3.0%, against 3.1% for a pure guess. The crowd holds up.
+- **Three times Monero's crowd, measured in public.** Every payment hides among 48 coins, three
+  times Monero's 16. We test how often an attacker who knows how people really spend can pick the
+  real coin: 2.1%, the same as a pure guess (1 in 48). The crowd holds up.
 - **Private, not unaccountable.** Hand your accountant a read-only view key, or prove one payment
   to one shop with a receipt, and reveal nothing else. Both are built in, one command each.
 - **Measured, not promised.** 44 public checks run on every change, a public page lists every
@@ -69,7 +69,7 @@ few who use it stand out; on Vesper every payment is private, so everyone hides 
 |---|---|---|
 | Who was paid | visible to everyone | **hidden** |
 | How much | visible to everyone | **hidden** |
-| Who paid | visible to everyone | **hidden among 32 possible payers** |
+| Who paid | visible to everyone | **hidden among 48 possible payers** |
 | Your balance | anyone can look it up | **only you**, and anyone you give your view key |
 
 ## Made for everyday use
@@ -114,28 +114,28 @@ the address new nodes use to find the network, is being set up; once it is liste
 `config.json`, a new node finds the others by itself.
 
 **Check the fair start yourself.** The network is called testnet-1. Its first block names
-Bitcoin block 972,096 (`000000000000000000016fadf5ba032191be819fb3ce74179e420ace9166dec4`), which
+Bitcoin block 972,206 (`00000000000000000001d78e9be4ec3758abe09510a60591cf282b316f042b67`), which
 did not exist until minutes before launch. The first block's own ID is
-`c1b12e33659264634e4e2be4bbaba5fcc637ef59ef6168d1c2db72f6f2830252`, and every node checks it.
+`158f6ee8eea75356358af7fe70b6e41d565ea37f8743e24df37ebb66f80393ea`, and every node checks it.
 
 ## Honest status
 
 - **This is a test network.** tVESP coins have no value and never will. A real network, if there
   is one, will start fresh with its own first block and its own addresses.
 - **Nobody independent has checked the cryptography yet.** Do not trust Vesper with real money.
-  Before that: a stronger way to hide the payer among everyone instead of 32, a review by an
+  Before that: a stronger way to hide the payer among everyone instead of 48, a review by an
   independent cryptographer, and legal advice.
 - **The network can still give hints.** Someone who runs many of the network's computers can
   sometimes guess where a payment started, and we measure how often (see
   [TECHNICAL.md](TECHNICAL.md)). If your internet address matters, run your node through Tor
   (`--proxy`).
 - **Still visible to everyone:** the fee (the same for everyone), mining rewards, how many coins
-  a payment uses, which block it is in, and the 32 coins it points at.
+  a payment uses, which block it is in, and the 48 coins it points at.
 
 ## How fast is it
 
 - Making a payment takes about a quarter of a second on an ordinary PC.
-- A node checks a payment in about 1/20 of a second.
+- A node checks a payment in under a tenth of a second.
 - A new block comes about every 30 seconds.
 
 ## Learn more

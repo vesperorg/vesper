@@ -39,13 +39,20 @@ def fetch(url: str) -> str:
 
 
 def newest_bitcoin_block() -> tuple[int, str]:
-    """(height, block ID) of a recent Bitcoin block both explorers agree on."""
-    tips = [int(fetch(tip)) for _, tip, _ in SOURCES]
-    height = min(tips)                         # the newest block both have seen
-    ids = [fetch(by_height % height) for _, _, by_height in SOURCES]
-    if not all(re.fullmatch(r"[0-9a-f]{64}", i) for i in ids) or len(set(ids)) != 1:
-        raise SystemExit("the explorers disagree about Bitcoin block %d (%s); try again in a minute" % (height, ids))
-    return height, ids[0]
+    """(height, block ID) of a recent Bitcoin block both explorers agree on: one below the
+    newest both have seen (minutes old, so the proof holds, and every explorer has indexed it)."""
+    for attempt in range(5):
+        try:
+            tips = [int(fetch(tip)) for _, tip, _ in SOURCES]
+            height = min(tips) - 1
+            ids = [fetch(by_height % height) for _, _, by_height in SOURCES]
+        except OSError:
+            time.sleep(10)
+            continue
+        if all(re.fullmatch(r"[0-9a-f]{64}", i) for i in ids) and len(set(ids)) == 1:
+            return height, ids[0]
+        time.sleep(10)
+    raise SystemExit("the explorers did not agree on a recent Bitcoin block; try again in a few minutes")
 
 
 def main() -> int:
@@ -81,6 +88,9 @@ def main() -> int:
     if old:
         text = text.replace(old.group(2), block_id).replace("{:,}".format(int(old.group(1))), "{:,}".format(height))
     text = text.replace(old_genesis, genesis["hash"])
+    # also by its label, in case other consensus settings changed first (then old_genesis is not
+    # the one README shows)
+    text = re.sub(r"(first block's own ID is\s+`)[0-9a-f]{64}(`)", lambda m: m.group(1) + genesis["hash"] + m.group(2), text)
     if text != before:
         with open(readme, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)

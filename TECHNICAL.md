@@ -15,9 +15,9 @@ was paid, or how much. It does this with three pieces, each of which you can rea
 - **How much is hidden.** Each amount is sealed inside a *commitment*: a value the chain can add up
   (so it can check that what went in equals what came out, plus the fee) but cannot read. A short
   proof attached to each payment shows no sealed amount is negative, so nobody can print coins.
-- **Which coin was spent is hidden.** A payment does not name the coin it spends. It points at 32
-  possible coins (its own plus 31 decoys) and carries a *ring signature*, a proof that the sender
-  owns one of the 32 without saying which, plus a one-way *spent marker* that lets every node
+- **Which coin was spent is hidden.** A payment does not name the coin it spends. It points at 48
+  possible coins (its own plus 47 decoys) and carries a *ring signature*, a proof that the sender
+  owns one of the 48 without saying which, plus a one-way *spent marker* that lets every node
   refuse a second spend of the same coin without ever learning which coin it was.
 
 
@@ -27,9 +27,9 @@ privacy failures are silent: the chain keeps working while it leaks. Before any 
 a public test network (this one), the stronger sender proof described below, a review by an
 independent cryptographer, and legal advice.
 
-**How private is it today, honestly:** it is Monero's design with twice Monero's ring. A sender
-hides among 32 coins, not among everyone on the chain, so a statistician with the whole chain still
-has a 1-in-32 shaped problem, not an impossible one. On the network, your payment is first handed
+**How private is it today, honestly:** it is Monero's design with three times Monero's ring. A sender
+hides among 48 coins, not among everyone on the chain, so a statistician with the whole chain still
+has a 1-in-48 shaped problem, not an impossible one. On the network, your payment is first handed
 quietly from node to node before any node announces it to everyone, so the node that announces it
 first is not yours; but an attacker who runs, say, a tenth of all nodes still guesses the right
 origin about a tenth of the time (`python leaktest.py` measures this), and the traffic between nodes
@@ -44,7 +44,7 @@ nothing.
 |---|---|---|
 | 1. Stealth addresses + view keys | **who received** | done |
 | 2. Sealed amounts + range proofs | **how much** | done |
-| 3a. Key images + ring signatures (ring of 32) | **which output was spent**, among 32 | done |
+| 3a. Key images + ring signatures (ring of 48) | **which output was spent**, among 48 | done |
 | 3b. Membership proof over ALL outputs | the same, among everyone | research: no design chosen |
 | 4. Network privacy: a quiet relay before the broadcast (Dandelion++), limits per peer | **whose computer announced it** | done: measured, not perfect (see below) |
 
@@ -101,7 +101,7 @@ choosing, which would quietly shrink your crowd. `coin.py --proxy` hides your ad
 a node, not your activity. Monero's remote nodes carry the same warning.
 
 Still visible, by design or until later: the fee (every wallet pays the same one), mining-reward
-amounts, how many inputs and outputs a payment has, which block it landed in, and the 32
+amounts, how many inputs and outputs a payment has, which block it landed in, and the 48
 candidates for each spend. A payment no longer says when it was made, and its inputs come in
 key-image order, not the order the wallet picked them. `selftest.py` has a test that lists
 exactly this.
@@ -116,13 +116,13 @@ Without `pynacl` everything still works on the built-in pure-Python curve, about
 | 1 | `selftest.bat` | 44 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
 | 2 | `wallet.bat` | Creates your wallet (two secret keys, one password). Shows your `tvsp...` address and a 55-character RECOVERY CODE: write it on paper, it is the wallet. |
 | 3 | `start_node.bat` | Node + explorer at http://127.0.0.1:8880, mining to your wallet. |
-| 4 | `explorer.bat` | Watch blocks arrive. Payments show as "one of a ring of 32 -> sealed amount -> one-time key". |
+| 4 | `explorer.bat` | Watch blocks arrive. Payments show as "one of a ring of 48 -> sealed amount -> one-time key". |
 | 5 | `wallet.bat` | Your balance: your wallet reads the blocks it has not seen yet, opens the outputs that are yours, and works out which of those it has spent. |
 | Any time | `testdrive.bat` | The whole test drive by itself: two throwaway nodes, a payment each way, a search of the raw chain, five break-it attempts. About 5 minutes; nothing of yours is touched. |
 
 Two waits, both short and both on purpose. A coin can be spent 10 blocks after it arrives (about
-5 minutes; Monero's wait is 20). And a brand-new chain cannot hide a payment until 32 outputs are
-that old, so the very first payment has to wait for about 42 blocks (roughly 10 to 20 minutes of
+5 minutes; Monero's wait is 20). And a brand-new chain cannot hide a payment until 48 outputs are
+that old, so the very first payment has to wait for about 58 blocks (roughly 15 to 30 minutes of
 mining). The wallet says so if you try earlier.
 
 ```bash
@@ -172,8 +172,8 @@ I = x*Hp(position, P), which only its owner can compute and nobody can link back
 marker is tied to where the output sits on the chain, not just to its key, so two payments to
 the same one-time key are two spendable coins. (In Monero they share one marker and one is lost,
 the "burning bug"; Zcash fixed the same flaw, "Faerie Gold", the way Vesper does.) A payment lists a
-ring of 32 outputs and carries a CLSAG ring signature proving three things at once: the signer
-owns one of the 32, the key image is that one's marker, and the input is worth exactly what that
+ring of 48 outputs and carries a CLSAG ring signature proving three things at once: the signer
+owns one of the 48, the key image is that one's marker, and the input is worth exactly what that
 one is worth. Nodes remember every key image; seeing one twice is a double spend. Because nobody
 can tell which outputs are spent, nothing is ever removed from the ledger.
 
@@ -214,8 +214,8 @@ is the length of the two branches (1.5 ms to undo a block of 20 payments), not o
 - Every point arriving from the network, key images included, must be in the prime-order group. Monero once had a real money-printing bug from skipping that check on key images.
 - Spent markers are tied to an output's position, so the "burning bug" cannot happen and no "keys must be unique" rule is needed. Such a rule would let a stranger cancel a waiting payment by getting a copy of its key mined first.
 - A wallet remembers the ring it first used for each coin and reuses it on a retry. Fresh decoys on a second attempt would leave the real coin as the only one in both rings. If a reorganisation took one decoy away, only that one is replaced.
-- A wallet keeps an encrypted notebook of what it has found and reads only new blocks, and it fetches the 32 members of a ring by their place in line instead of downloading every output. It asks for whole blocks and whole rings, its own coin included, so the node it talks to cannot tell which outputs are its.
-- Every output a payment touches, its own coin and all 31 decoys, must be 10 blocks old. A payment therefore survives any reorganisation shorter than that and simply returns to the queue. (Monero has the same rule; its blocks are four times slower, so the wait is 20 minutes instead of 5.)
+- A wallet keeps an encrypted notebook of what it has found and reads only new blocks, and it fetches the 48 members of a ring by their place in line instead of downloading every output. It asks for whole blocks and whole rings, its own coin included, so the node it talks to cannot tell which outputs are its.
+- Every output a payment touches, its own coin and all 47 decoys, must be 10 blocks old. A payment therefore survives any reorganisation shorter than that and simply returns to the queue. (Monero has the same rule; its blocks are four times slower, so the wait is 20 minutes instead of 5.)
 - A payment carries no timestamp, and wallets pay exactly the minimum fee for the payment's size, so neither the clock nor the fee fingerprints a wallet.
 - The fee grows with the number of inputs and outputs. Outputs stay on the ledger forever, so filling it up is never free.
 - Difficulty moves a little with every block and has no averaging window (see above). Monero averages 720 blocks, a full day, and needs hours to follow miners leaving.
@@ -223,11 +223,11 @@ is the length of the two branches (1.5 ms to undo a block of 20 payments), not o
 - The miner rebuilds the block it is searching for when a payment arrives, so a payment does not sit out a block that was started a second before it came in.
 - Switching to a winning branch costs the two branches, not the chain, and a branch is checked block by block as it downloads, so a peer cannot make a node hold a long branch of rubbish.
 - The node refuses anything a web page could make your browser send, so a site you visit cannot point your miner at someone else's wallet, and it does not reveal its owner's address to peers.
-- Every payment has the same shape: rings of exactly 32, at least two outputs in random order, change included even when it is zero.
+- Every payment has the same shape: rings of exactly 48, at least two outputs in random order, change included even when it is zero.
 - All consensus settings are hashed into the genesis block, so two nodes with different rules can never mistake each other's chain for their own.
 
 None of that beats Monero on the thing that matters most. The part meant to, hiding the sender
-among the whole chain instead of 31 decoys, is stage 3b, and it is research.
+among the whole chain instead of 47 decoys, is stage 3b, and it is research.
 
 ## Development fund (off by default)
 
@@ -240,7 +240,7 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 - `python coin.py devfund init` creates the fund wallet and writes its address into `config.json`. That changes the genesis block, so do it before the chain starts and back up the wallet file.
 - `python coin.py devfund show` and the explorer show received, unspent and spent totals.
 
-## Speed (this PC, libsodium backend, ring size 32)
+## Speed (this PC, libsodium backend, ring size 48)
 
 | Operation | Time |
 |---|---|
@@ -248,8 +248,8 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 | One proof-of-work try (Argon2id, 32 MiB) | 11 ms, about 90 tries a second per core |
 | Mining on 8 cores (worker processes, `--processes N`) | 300 to 420 tries a second on this PC; memory speed limits it beyond about 8 |
 | Build a payment (seal and prove 2 amounts, ring-sign 1 input) | 204 ms, once, on the sender's PC |
-| Node accepts a payment (every check) | 54 ms |
-| Fresh node validates a block of 20 payments | 23 ms per payment |
+| Node accepts a payment (every check) | 64 ms |
+| Fresh node validates a block of 20 payments | 33 ms per payment |
 | Mine a block of 20 payments already seen | 4 ms total |
 | Re-check a waiting payment against a 200,000-output ledger | 0.03 ms (does not grow with the chain) |
 | Restart a node (blocks it already checked) | 0.035 ms per block: about 40 s for a year of 30-second blocks |
@@ -258,7 +258,7 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 | Switch branches, undoing a block of 20 payments, same ledger | 1.5 ms (does not grow with the chain) |
 | Wallet scans one output | 0.11 ms someone else's, 0.7 ms one of its own; once: the wallet remembers what it has read |
 | Wallet looks again when nothing is new | about 15 ms (it rereads the newest 20 blocks, which could still be reorganised) |
-| One payment on disk | about 7.3 kB of JSON (about 3.1 kB in binary) |
+| One payment on disk | about 9.5 kB of JSON (about 4 kB in binary; the ring signature alone is 1,600 bytes) |
 
 What each phase cost on the node: phase 1 alone about 4 ms per payment in a block, sealed amounts
 took it to 8.4 ms, hidden senders to 18.6 ms, and one joint range proof per payment brought it back

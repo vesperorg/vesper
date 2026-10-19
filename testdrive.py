@@ -161,7 +161,7 @@ class Drive:
         self.start_node(self.port_b, self.dir_b, "--peer", self.url_a)
         print("Mining until %d coins are 10 blocks old - a ring needs that many to hide in." % RING)
         started = time.time()
-        self.wait("%d old-enough coins" % RING, lambda: self.info(self.url_a)["spendable_outputs"] >= RING)
+        self.wait("%d old-enough coins" % RING, lambda: self.info(self.url_a)["spendable_outputs"] >= RING, 3600)
         print("  ready after %.0f seconds, at block %d\n" % (time.time() - started, self.info(self.url_a)["height"]))
 
         print("STEP 1  Alice has coins")
