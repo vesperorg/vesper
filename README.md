@@ -1,28 +1,43 @@
 # Vesper
 
-**Private digital cash. Every payment is sealed: nobody watching can see who paid, who was paid, or how much.**
+[![self-test](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml/badge.svg)](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml) Code: https://github.com/vesperorg/vesper - Site: https://vesperorg.github.io/vesper/
 
-[![self-test](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml/badge.svg)](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml)
-Website: https://vesperorg.github.io/vesper/ · Code: https://github.com/vesperorg/vesper
+**Vesper is a cryptocurrency project built around one thing, privacy, on its own new blockchain
+(not a token on someone else's), with the aim of outdoing both Monero and Zcash.** Like Bitcoin,
+it is money that lives on a network of ordinary computers instead of in a bank. Unlike Bitcoin,
+its shared record proves every payment is genuine without showing who paid, who was paid, or how
+much.
 
-## What we are building
+How we aim to outdo them:
 
-Vesper is a new cryptocurrency: money that lives on a network of ordinary computers instead of
-in a bank, the way Bitcoin does. The difference is privacy. On Bitcoin, every payment ever made
-stays public forever: anyone can look up an address and see its balance and everyone it paid.
-Vesper keeps a shared record that proves every payment is genuine, without showing who sent it,
-who received it, or how much it was. You decide who sees your payments, not the whole internet.
+- **Every payment is private, always.** Zcash makes privacy optional, so most of its payments are
+  public and the private ones stand out. Vesper has no public payments at all, like Monero.
+- **A bigger crowd.** Every payment hides the coin it spends in a **ring of 32**, twice Monero's.
+- **You can prove your own history when you choose.** A read-only view key for your accountant,
+  and a receipt for one payment when a shop says it never arrived.
+- **Network privacy measured, not promised.** We publish how often an attacker can guess where a
+  payment came from, and Tor is built in.
 
-Vesper is running today as a **public test network**. Its coins, **tVESP**, are test coins with
-no value, so anyone can try it, try to break it, and help make it solid before it ever carries
-real money.
+**Where it stands today, honestly:** it is Monero's design with twice Monero's ring, so a payment
+hides among 32 coins, not yet among everyone. It is **not audited**. It runs as a public test
+network, **testnet-1**, whose coins, **tVESP** (addresses start `tvsp`), are test coins with
+**no value, ever**: anyone can try it, try to break it, and help make it solid before it ever
+carries real money.
 
-## Why it matters
+## Why we are doing this
+
+In the founder's words:
+
+> Nothing to buy, nothing for sale, not yet even a coin worth anything: first we have to make sure
+> Vesper is as secure and as private as it can be. We are not treating this as a joke or a game.
+> We want real privacy in our money and in our payments. Are you tired of being asked where your
+> money came from and where it is going, as if you were under investigation? Let us have our
+> privacy. Cash does not always work, especially with people on the other side of the world. We
+> need a modern, legitimate privacy coin, and Vesper is it.
 
 - **Your money is your business.** Your pay, your rent, your doctor, your donations. With a
-  public coin, one payment to a shop is enough for that shop to follow your wallet forever.
-- **Cash is private. Digital money should be too.** Vesper aims to be the digital version of
-  paying in cash.
+  public coin like Bitcoin, one payment to a shop is enough for that shop to follow your wallet
+  forever.
 - **Privacy only works when everyone has it.** On coins where privacy is optional, the few who
   use it stand out. On Vesper every payment is private, so everyone hides in the same crowd.
 
@@ -106,10 +121,10 @@ did not exist until minutes before launch. The first block's own ID is
 - **Nobody independent has checked the cryptography yet.** Do not trust Vesper with real money.
   Before that: a stronger way to hide the payer among everyone instead of 32, a review by an
   independent cryptographer, and legal advice.
-- **How private it is today:** the same design as Monero, the best-known private coin, with
-  twice Monero's crowd. Someone who runs many of the network's computers can still sometimes
-  guess where a payment started, and we measure how often (see [TECHNICAL.md](TECHNICAL.md)).
-  If your internet address matters, run your node through Tor (`--proxy`).
+- **The network can still give hints.** Someone who runs many of the network's computers can
+  sometimes guess where a payment started, and we measure how often (see
+  [TECHNICAL.md](TECHNICAL.md)). If your internet address matters, run your node through Tor
+  (`--proxy`).
 - **Still visible to everyone:** the fee (the same for everyone), mining rewards, how many coins
   a payment uses, which block it is in, and the 32 coins it points at.
 
