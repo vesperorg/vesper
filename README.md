@@ -37,6 +37,22 @@ network, **testnet-1**, whose coins, **tVESP** (addresses start `tvsp`), are tes
 **no value, ever**: anyone can try it, try to break it, and help make it solid before it ever
 carries real money.
 
+## Why Vesper
+
+- **Nothing to see on the chain, and nothing to opt into.** No addresses, no payment amounts, no balances
+  on the public record. Zcash made privacy a choice, most people never chose it, and the few who
+  did stand out. On Vesper there is no public payment at all, so everyone shares the same crowd.
+- **Twice Monero's crowd, measured in public.** Every payment hides among 32 coins, double
+  Monero's 16. We test how often an attacker who knows how people really spend can pick the real
+  coin: 3.0%, against 3.1% for a pure guess. The crowd holds up.
+- **Private, not unaccountable.** Hand your accountant a read-only view key, or prove one payment
+  to one shop with a receipt, and reveal nothing else. Both are built in, one command each.
+- **Measured, not promised.** 44 public checks run on every change, a public page lists every
+  weakness we know of, and the network leak comes with a number instead of a slogan.
+- **A fair launch.** No coins made in advance and nothing for sale: every coin is mined, from block
+  one, by whoever shows up with an ordinary computer. The first block names a Bitcoin block that
+  did not exist until launch day, so nobody could have mined in secret beforehand.
+
 ## Why we are doing this
 
 There is nothing to buy and nothing for sale, not yet even a coin worth anything, because Vesper
@@ -46,16 +62,6 @@ coin we receive or send. Your pay, your rent, your doctor and your donations are
 with a public coin like Bitcoin, one payment to a shop is enough for that shop to follow your
 wallet forever. And privacy only works when everyone has it. On coins where it is optional, the
 few who use it stand out; on Vesper every payment is private, so everyone hides in the same crowd.
-
-## How Vesper aims to outdo Monero and Zcash
-
-- **Every payment is private, always.** Zcash makes privacy optional, so most of its payments are
-  public and the private ones stand out. Vesper has no public payments at all, like Monero.
-- **A bigger crowd.** A ring of 32 coins for every payment, twice Monero's.
-- **You can prove your own history when you choose.** A view key for your accountant, and a
-  receipt for one payment when a shop says it never arrived.
-- **Network privacy measured, not promised.** We publish how often an attacker can guess where a
-  payment came from, and Tor is built in.
 
 ## What the shared record shows
 
@@ -78,9 +84,6 @@ few who use it stand out; on Vesper every payment is private, so everyone hides 
   never spend.
 - **Mining on an ordinary computer.** Vesper's mining is built so a normal PC can take part, not
   just warehouses of special machines.
-- **A fair start.** No coins were made in advance, none are for sale, and the network's first
-  block names a Bitcoin block that did not exist until launch day, so nobody could have mined
-  in secret beforehand.
 
 ## Try it in five minutes
 
