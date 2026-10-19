@@ -2,21 +2,34 @@
 
 [![self-test](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml/badge.svg)](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml) Code: https://github.com/vesperorg/vesper - Site: https://vesperorg.github.io/vesper/
 
-**Vesper is a cryptocurrency project built around one thing, privacy, on its own new blockchain
-(not a token on someone else's), with the aim of outdoing both Monero and Zcash.** Like Bitcoin,
-it is money that lives on a network of ordinary computers instead of in a bank. Unlike Bitcoin,
-its shared record proves every payment is genuine without showing who paid, who was paid, or how
-much.
+**Vesper is a privacy cryptocurrency on its own new blockchain (not a token on someone else's),
+built to outdo both Monero and Zcash.** It is money you can use without anyone watching what you
+earn, what you spend or who you pay, and without having to explain where every coin came from as
+if you were under investigation. Cash once gave people that freedom, but cash cannot reach someone
+on the other side of the world. Vesper is built to be its modern, legitimate successor: privacy
+that is never optional, for everyone, on every payment.
 
-How we aim to outdo them:
+## How it works
 
-- **Every payment is private, always.** Zcash makes privacy optional, so most of its payments are
-  public and the private ones stand out. Vesper has no public payments at all, like Monero.
-- **A bigger crowd.** Every payment hides the coin it spends in a **ring of 32**, twice Monero's.
-- **You can prove your own history when you choose.** A read-only view key for your accountant,
-  and a receipt for one payment when a shop says it never arrived.
-- **Network privacy measured, not promised.** We publish how often an attacker can guess where a
-  payment came from, and Tor is built in.
+Like Bitcoin, Vesper is money kept on a shared record by a network of ordinary computers instead
+of a bank. Unlike Bitcoin, that record proves every payment is genuine without showing who paid,
+who was paid, or how much:
+
+1. **A fresh lock for every payment.** Your address is never written on the record. Each payment
+   to you goes into a brand-new one-time lock that only your wallet recognises, so two payments
+   to you look completely unrelated.
+2. **Sealed amounts.** Every amount is sealed like an envelope that the network can add up but
+   never open. It can still check that nobody spent more than they had, and a short proof stops
+   anyone from printing money with a "negative" amount.
+3. **A crowd of 32.** When you spend, your payment points at a **ring of 32** coins, yours and 31
+   others, and proves you own one of them without saying which. A one-way "spent" stamp stops
+   anyone from spending the same coin twice.
+4. **A quiet hand-off.** Your computer does not announce your payment to everyone. It passes it
+   quietly through a few other computers first, so the one that announces it is not yours. For
+   more, Vesper can send all its traffic through Tor.
+
+Your balance and your payments stay yours. A read-only **view key** lets you show them to whoever
+you choose, such as an accountant, without giving anyone the power to spend.
 
 **Where it stands today, honestly:** it is Monero's design with twice Monero's ring, so a payment
 hides among 32 coins, not yet among everyone. It is **not audited**. It runs as a public test
@@ -26,20 +39,23 @@ carries real money.
 
 ## Why we are doing this
 
-In the founder's words:
+There is nothing to buy and nothing for sale, not yet even a coin worth anything, because Vesper
+first has to be as secure and as private as it can possibly be. This is not a joke or a game to
+us. We want real privacy in our money and our payments, without being asked to account for every
+coin we receive or send. Your pay, your rent, your doctor and your donations are your business:
+with a public coin like Bitcoin, one payment to a shop is enough for that shop to follow your
+wallet forever. And privacy only works when everyone has it. On coins where it is optional, the
+few who use it stand out; on Vesper every payment is private, so everyone hides in the same crowd.
 
-> Nothing to buy, nothing for sale, not yet even a coin worth anything: first we have to make sure
-> Vesper is as secure and as private as it can be. We are not treating this as a joke or a game.
-> We want real privacy in our money and in our payments. Are you tired of being asked where your
-> money came from and where it is going, as if you were under investigation? Let us have our
-> privacy. Cash does not always work, especially with people on the other side of the world. We
-> need a modern, legitimate privacy coin, and Vesper is it.
+## How Vesper aims to outdo Monero and Zcash
 
-- **Your money is your business.** Your pay, your rent, your doctor, your donations. With a
-  public coin like Bitcoin, one payment to a shop is enough for that shop to follow your wallet
-  forever.
-- **Privacy only works when everyone has it.** On coins where privacy is optional, the few who
-  use it stand out. On Vesper every payment is private, so everyone hides in the same crowd.
+- **Every payment is private, always.** Zcash makes privacy optional, so most of its payments are
+  public and the private ones stand out. Vesper has no public payments at all, like Monero.
+- **A bigger crowd.** A ring of 32 coins for every payment, twice Monero's.
+- **You can prove your own history when you choose.** A view key for your accountant, and a
+  receipt for one payment when a shop says it never arrived.
+- **Network privacy measured, not promised.** We publish how often an attacker can guess where a
+  payment came from, and Tor is built in.
 
 ## What the shared record shows
 
@@ -49,21 +65,6 @@ In the founder's words:
 | How much | visible to everyone | **hidden** |
 | Who paid | visible to everyone | **hidden among 32 possible payers** |
 | Your balance | anyone can look it up | **only you**, and anyone you give your view key |
-
-## How it works, in four ideas
-
-1. **A fresh lock for every payment.** Your address is never written on the record. Each payment
-   to you goes into a brand-new one-time lock that only your wallet recognises, so two payments
-   to you look completely unrelated.
-2. **Sealed amounts.** Every amount is sealed like an envelope that the network can add up but
-   never open. It can still check that nobody spent more than they had, and a short proof stops
-   anyone from printing money with a "negative" amount.
-3. **A crowd of 32.** When you spend, your payment points at 32 coins, yours and 31 others, and
-   proves you own one of them without saying which. A one-way "spent" stamp stops anyone from
-   spending the same coin twice.
-4. **A quiet hand-off.** Your computer does not announce your payment to everyone. It passes it
-   quietly through a few other computers first, so the one that announces it is not yours. For
-   more, Vesper can send all its traffic through Tor.
 
 ## Made for everyday use
 
