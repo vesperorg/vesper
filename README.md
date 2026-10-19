@@ -87,6 +87,8 @@ few who use it stand out; on Vesper every payment is private, so everyone hides 
 
 ## Try it in five minutes
 
+New to all this? [START_HERE.md](START_HERE.md) walks you through it step by step.
+
 You need Python 3.10 or newer.
 
 1. Download the code: the green **Code** button above, then **Download ZIP**, and unzip it.
