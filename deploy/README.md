@@ -22,8 +22,8 @@ The repository must be public first (`publish_github.bat`), because the server d
 code from it. Then, on the server:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/ORG/vesper/master/deploy/setup-seed.sh
-sudo bash setup-seed.sh https://github.com/ORG/vesper
+curl -fsSLO https://raw.githubusercontent.com/vesperorg/vesper/master/deploy/setup-seed.sh
+sudo bash setup-seed.sh https://github.com/vesperorg/vesper
 ```
 
 The script installs Python, copies Vesper to `/opt/vesper`, runs the full self-test (nothing
@@ -41,7 +41,7 @@ every node that starts finds it.
 |---|---|
 | Is it running, what is it doing | `journalctl -u vesper-node -f` |
 | Its view of the network | `curl -s http://127.0.0.1:8880/api/info` |
-| Update to the newest code | `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/ORG/vesper` |
+| Update to the newest code | `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` |
 | Stop, start | `sudo systemctl stop vesper-node`, `sudo systemctl start vesper-node` |
 
 The service runs as its own user with no rights outside its data folder (`/var/lib/vesper`),
