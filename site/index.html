@@ -127,12 +127,12 @@
   <div class="wrap">
     <div class="eyebrow">Vesper &middot; VESP &middot; the evening-star coin</div>
     <h1>Private by default.<br>Provable on demand.</h1>
-    <p class="lede">Vesper is a privacy cryptocurrency on its own new blockchain, built to outdo both Monero and Zcash. Your money, your business: nobody sees what you earn, what you spend or who you pay, and nobody gets to ask where it came from. Privacy is never optional, so every user hides in the same crowd, and that crowd is twice the size of Monero's. When you do want to prove something, to an accountant, a partner or a court, you hand over exactly one thing and nothing more. Money that works like cash, anywhere in the world, built in the open by people who publish every weakness instead of hiding it.</p>
-    <p class="lede" style="font-size:17px"><strong>How it works.</strong> No transaction ever names who paid or who was paid. Every payment lands at a one-time key only its owner can recognise, its amount is sealed so the chain can check the books without reading them, and its sender is hidden among 32 possible spenders, twice Monero's crowd. A view key shows your own history to an accountant or a court, and nobody else's.</p>
+    <p class="lede">Vesper is a privacy cryptocurrency on its own new blockchain, built to outdo both Monero and Zcash. Your money, your business: nobody sees what you earn, what you spend or who you pay, and nobody gets to ask where it came from. Privacy is never optional, so every user hides in the same crowd, and that crowd is three times the size of Monero's. When you do want to prove something, to an accountant, a partner or a court, you hand over exactly one thing and nothing more. Money that works like cash, anywhere in the world, built in the open by people who publish every weakness instead of hiding it.</p>
+    <p class="lede" style="font-size:17px"><strong>How it works.</strong> No transaction ever names who paid or who was paid. Every payment lands at a one-time key only its owner can recognise, its amount is sealed so the chain can check the books without reading them, and its sender is hidden among 48 possible spenders, three times Monero's crowd. A view key shows your own history to an accountant or a court, and nobody else's.</p>
     <div class="pills">
       <span class="pill on"><i></i>Receivers hidden</span>
       <span class="pill on"><i></i>Amounts hidden</span>
-      <span class="pill on"><i></i>Senders hidden in a ring of 32</span>
+      <span class="pill on"><i></i>Senders hidden in a ring of 48</span>
       <span class="pill on"><i></i>Network: the first broadcast is not the sender's</span>
       <span class="pill on"><i></i>Addresses on chain: none, ever</span>
       <span class="pill next"><i></i>Testnet-1: test coins, no value, launching</span>
@@ -155,7 +155,7 @@
     <h2 class="measure">Four reasons, each one you can check yourself.</h2>
     <div class="phases">
       <div class="phase done"><div class="st">Nothing to see</div><h3>No address, no amount, no sender. Ever.</h3><p>Not hidden behind a setting most people never turn on, as on Zcash. Hidden for everyone, on every payment, with no transparent kind of transaction to leak from.</p></div>
-      <div class="phase done"><div class="st">Twice Monero's crowd</div><h3>Every spend hides among 32 coins.</h3><p>Monero uses 16. Vesper's decoys are drawn from how people really spend, and the leak is measured in public: an informed attacker names the real coin 3.0% of the time, where 3.1% would be perfect.</p></div>
+      <div class="phase done"><div class="st">Three times Monero's crowd</div><h3>Every spend hides among 48 coins.</h3><p>Monero uses 16. Vesper's decoys are drawn from how people really spend, and the leak is measured in public: an informed attacker names the real coin 2.1% of the time, where 2.1% (1 in 48) would be perfect.</p></div>
       <div class="phase done"><div class="st">Private, not unaccountable</div><h3>Prove your own history, to whom you choose.</h3><p>A view key shows an accountant everything of yours and lets them spend nothing. A payment proof shows one payment to one person and nothing else. Both built in, one command each.</p></div>
       <div class="phase done"><div class="st">Measured, not promised</div><h3>Every claim ships with a test.</h3><p>44 checks run in public on every change, a page lists every known weakness, and the network leak has a number, not an adjective. Privacy that is attacked in the open is the only kind worth trusting.</p></div>
     </div>
@@ -181,7 +181,7 @@
       <h2>Most blockchains are the most public ledger ever built.</h2>
       <p>On Bitcoin and Ethereum every payment is written down forever, in the open, with both addresses attached. Give an analyst one address and they can walk your whole financial life: who pays you, who you pay, how much, when. Companies sell exactly that service.</p>
       <p>Two coins fixed it, each with a flaw. <strong>Monero</strong> hides the sender in a ring of 16, the real output and 15 decoys, a small crowd that statistics have cracked before. <strong>Zcash</strong> has stronger math but made privacy optional, so almost nobody used it and the chain leaked anyway. Both still reveal which computer first announced a transaction.</p>
-      <p>Vesper sets out to beat both. It takes the best idea from each, mandatory privacy and a hidden sender from Monero, strong proofs from Zcash, adds the two things they lack, a bigger crowd for every spend and a way to prove your own history on demand, and is written in a few thousand lines of Python, with libsodium doing the curve arithmetic, so you can read every trick line by line. Where it stands against that aim today is stated plainly further down: Monero's design with twice its ring, not yet more.</p>
+      <p>Vesper sets out to beat both. It takes the best idea from each, mandatory privacy and a hidden sender from Monero, strong proofs from Zcash, adds the two things they lack, a bigger crowd for every spend and a way to prove your own history on demand, and is written in a few thousand lines of Python, with libsodium doing the curve arithmetic, so you can read every trick line by line. Where it stands against that aim today is stated plainly further down: Monero's design with three times its ring, not yet more.</p>
     </div>
   </div>
 </section>
@@ -197,7 +197,7 @@
           <tr><td>Privacy is mandatory</td><td>Yes</td><td>No, optional, and most people skipped it</td><td class="v">Yes. There is no transparent transaction type.</td></tr>
           <tr><td>Receiver hidden</td><td>Stealth addresses</td><td>Shielded addresses</td><td class="v">Stealth addresses, done</td></tr>
           <tr><td>Amount hidden</td><td>Yes (RingCT)</td><td>Yes</td><td class="v">Yes, done: commitments the chain checks without reading, with range proofs</td></tr>
-          <tr><td>Sender hidden</td><td>Ring of 16: the real output and 15 decoys</td><td>Zero-knowledge proof over the shielded pool</td><td class="v">Hidden in a ring of 32 today, twice Monero's: an attacker who knows how people spend names the real coin 3.0% of the time, where 3.1% is fair. Hiding among every output on the chain is the research target, not a promise.</td></tr>
+          <tr><td>Sender hidden</td><td>Ring of 16: the real output and 15 decoys</td><td>Zero-knowledge proof over the shielded pool</td><td class="v">Hidden in a ring of 48 today, three times Monero's: an attacker who knows how people spend names the real coin 2.1% of the time, where 2.1% is fair. Hiding among every output on the chain is the research target, not a promise.</td></tr>
           <tr><td>Prove your own history</td><td>View key, incoming only</td><td>Viewing keys</td><td class="v">View keys from day one: see everything of yours, spend nothing. Payment proofs for one payment at a time.</td></tr>
           <tr><td>Network layer</td><td>Dandelion++</td><td>None built in</td><td class="v">Dandelion++-style stem relay, built; the leak is measured and published (an attacker with 10% of nodes names the sender's node 11% of the time); Tor with one flag</td></tr>
           <tr><td>Mining</td><td>RandomX: favours CPUs, hostile to mining chips</td><td>Equihash: graphics cards and chips</td><td class="v">Argon2id, memory-hard, hostile to Bitcoin's chips; an interim choice, RandomX likely for production</td></tr>
@@ -253,10 +253,10 @@
       </div>
       <div class="txcard">
         <div class="txcol">
-          <h4>Input: one of 32 outputs, unknown which</h4>
-          <div class="row"><span class="k">ring of 32 existing outputs, sorted; the real one is among them</span><span class="a">sealed</span></div>
+          <h4>Input: one of 48 outputs, unknown which</h4>
+          <div class="row"><span class="k">ring of 48 existing outputs, sorted; the real one is among them</span><span class="a">sealed</span></div>
           <div class="row"><span class="k">key image 79547d2a8209&hellip; a one-way spent marker: seen twice means double spend</span><span class="a"></span></div>
-          <div class="row"><span class="k muted">one ring signature: proves the signer owns one of the 32, not which</span><span class="a">1,152 bytes</span></div>
+          <div class="row"><span class="k muted">one ring signature: proves the signer owns one of the 48, not which</span><span class="a">1,600 bytes</span></div>
         </div>
         <div class="txcol">
           <h4>Outputs: one-time keys, sealed amounts</h4>
@@ -266,7 +266,7 @@
           <div class="row"><span class="k muted">range proof, one for both outputs</span><span class="a">736 bytes</span></div>
         </div>
       </div>
-      <div class="verdict" id="verdict">Someone spent one of 32 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 32 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 32 is twice Monero's, not the whole chain.</div>
+      <div class="verdict" id="verdict">Someone spent one of 48 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 48 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 48 is three times Monero's, not the whole chain.</div>
     </div>
   </div>
 </section>
@@ -277,14 +277,14 @@
     <h2 class="measure">Privacy that nobody waits for.</h2>
     <p class="measure">Measured on an ordinary laptop with receivers, amounts and senders all hidden: Python with libsodium doing the curve arithmetic. Numbers from the self-test.</p>
     <div class="speed">
-      <div class="tile"><div class="big">54<small>ms</small></div><div class="lab">for a node to accept a payment at a ring of 32: ring signature, spent marker and one joint range proof checked (45 ms at 16)</div></div>
-      <div class="tile"><div class="big">23<small>ms</small></div><div class="lab">per payment when a fresh node validates a block of 20 (15.1 ms at a ring of 16)</div></div>
+      <div class="tile"><div class="big">64<small>ms</small></div><div class="lab">for a node to accept a payment at a ring of 48: ring signature, spent marker and one joint range proof checked (45 ms at 16, 54 at 32)</div></div>
+      <div class="tile"><div class="big">33<small>ms</small></div><div class="lab">per payment when a fresh node validates a block of 20 (15 ms at a ring of 16, 23 at 32)</div></div>
       <div class="tile"><div class="big">15<small>ms</small></div><div class="lab">for a wallet to re-check when nothing is new: it reads only new blocks, never the whole chain</div></div>
       <div class="tile"><div class="big">204<small>ms</small></div><div class="lab">for the sender to build a payment, once</div></div>
-      <div class="tile"><div class="big">3.1<small>kB</small></div><div class="lab">per payment in binary (7.3 kB as JSON): 1,152 bytes of ring signature for a ring of 32, one 736-byte range proof</div></div>
+      <div class="tile"><div class="big">4<small>kB</small></div><div class="lab">per payment in binary (9.5 kB as JSON): 1,600 bytes of ring signature for a ring of 48, one 736-byte range proof</div></div>
       <div class="tile"><div class="big">90<small>tries/s</small></div><div class="lab">mining per laptop core, 300 to 420 on eight: Argon2id with 32 MB per try; 11 ms to check a block's work</div></div>
     </div>
-    <p class="measure muted" style="margin-top:18px;font-size:15px">Each layer has a price on the node: about 4 ms per payment with only receivers hidden, 8.4 with amounts sealed, 18.6 with senders hidden in a ring of 16, back to 15.1 with one joint range proof per payment, and 23 at the ring of 32 the testnet runs. Ring signatures cannot be batch-checked, which is one reason the research target matters: a proof of membership among every output has to beat the ring's per-input cost to ship.</p>
+    <p class="measure muted" style="margin-top:18px;font-size:15px">Each layer has a price on the node: about 4 ms per payment with only receivers hidden, 8.4 with amounts sealed, 18.6 with senders hidden in a ring of 16, back to 15.1 with one joint range proof per payment, 23 at a ring of 32, and 33 at the ring of 48 the testnet runs. Ring signatures cannot be batch-checked, which is one reason the research target matters: a proof of membership among every output has to beat the ring's per-input cost to ship.</p>
   </div>
 </section>
 
@@ -295,7 +295,7 @@
     <div class="phases">
       <div class="phase done"><div class="st">Done</div><h3>1. Stealth addresses and view keys</h3><p>No address ever appears on the chain. Wallets find their coins by scanning. View keys audit without spending.</p></div>
       <div class="phase done"><div class="st">Done</div><h3>2. Hidden amounts</h3><p>Amounts are sealed in commitments with one 736-byte range proof per payment, batch-checked per block. Nodes prove inputs equal outputs and nothing is negative without seeing a number. Every payment has at least two shuffled outputs.</p></div>
-      <div class="phase done"><div class="st">Done, stage one</div><h3>3. Hidden senders</h3><p>Every input is signed as one of a ring of 32 outputs, twice Monero's, with a one-way spent marker that makes double spends impossible without ever naming the output. Monero's strength. Stage two, hiding among every output on the chain, is research with no design chosen yet. 44 self-test checks across all phases.</p></div>
+      <div class="phase done"><div class="st">Done, stage one</div><h3>3. Hidden senders</h3><p>Every input is signed as one of a ring of 48 outputs, three times Monero's, with a one-way spent marker that makes double spends impossible without ever naming the output. Monero's strength. Stage two, hiding among every output on the chain, is research with no design chosen yet. 44 self-test checks across all phases.</p></div>
       <div class="phase done"><div class="st">Done, measured</div><h3>4. Network privacy</h3><p>A payment travels quietly from node to node before anyone broadcasts it, so the first announcer is a relay, not the sender. Measured in a 200-node simulation: an attacker with 10% of the nodes names the sender's node 11% of the time, 25% without the stem. Nothing between nodes is encrypted; one flag sends everything through Tor.</p></div>
     </div>
   </div>
@@ -309,7 +309,7 @@
       <div class="notice">
         <p>Vesper has no value, is not listed anywhere, and never will be. Testnet-1's tVESP are test coins, worth nothing by design. It exists so a person can read exactly how private money works and then try to do it better.</p>
         <p>Homemade privacy cryptography is unaudited. The real projects spent years and several audits getting this right, and their first versions still had traceability bugs. If you want private money for real, use Monero.</p>
-        <p style="margin:0">What the chain still shows an observer today, stated plainly: that the sender is one of 32 outputs rather than one of all of them (an attacker who knows how people spend names the real one 3.0% of the time; fair would be 3.1%), the fee, the amount of each mining reward, the count and size of inputs and outputs, and that the outputs of one payment belong together. Off the chain, the first broadcast of your payment comes from a relay rather than your node, but an attacker running a share of the nodes still guesses your node about that share of the time, your peers see your address unless you run through Tor, and a dishonest node could feed your wallet decoys of its choosing, so for real privacy you run your own node, the same rule Monero users live by. The self-test includes a check that lists exactly that, so the claim on this page and the code never drift apart. The honest line today: Monero's design with twice its ring, which is still a crowd of 32 and not of everyone. "Untraceable" waits for stage two of phase 3 and an outside audit.</p>
+        <p style="margin:0">What the chain still shows an observer today, stated plainly: that the sender is one of 48 outputs rather than one of all of them (an attacker who knows how people spend names the real one 2.1% of the time; fair would be 2.1%), the fee, the amount of each mining reward, the count and size of inputs and outputs, and that the outputs of one payment belong together. Off the chain, the first broadcast of your payment comes from a relay rather than your node, but an attacker running a share of the nodes still guesses your node about that share of the time, your peers see your address unless you run through Tor, and a dishonest node could feed your wallet decoys of its choosing, so for real privacy you run your own node, the same rule Monero users live by. The self-test includes a check that lists exactly that, so the claim on this page and the code never drift apart. The honest line today: Monero's design with three times its ring, which is still a crowd of 48 and not of everyone. "Untraceable" waits for stage two of phase 3 and an outside audit.</p>
       </div>
     </div>
   </div>
@@ -320,7 +320,7 @@
     <div class="measure">
       <div class="eyebrow">Run it</div>
       <h2>Ten minutes on your own PC.</h2>
-      <p>Python 3.10 or newer and <code>pip install -r requirements.txt</code>. Everything lives in one folder. <code>python coin.py reset-chain</code> starts a fresh chain and keeps your wallets. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a new chain needs 32 such coins, about 42 blocks or ten to twenty minutes, before its first payment: there is nothing to hide among before that. On testnet-1 your node finds the network through the seed node in <code>config.json</code>; the coins are tVESP and worth nothing.</p>
+      <p>Python 3.10 or newer and <code>pip install -r requirements.txt</code>. Everything lives in one folder. <code>python coin.py reset-chain</code> starts a fresh chain and keeps your wallets. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a new chain needs 48 such coins, about 58 blocks or fifteen to thirty minutes, before its first payment: there is nothing to hide among before that. On testnet-1 your node finds the network through the seed node in <code>config.json</code>; the coins are tVESP and worth nothing.</p>
       <ol class="run">
         <li><strong>selftest.bat</strong> runs 44 checks, including that the miner's address never appears on the chain, that amounts stay sealed, that a spent output is never named, that the first broadcast of a payment is not the sender's, and that a view key can see but not spend.</li>
         <li><strong>wallet.bat</strong> creates your wallet, two secret numbers behind one password, and shows your <span class="mono">tvsp2&hellip;</span> testnet-1 address and a 55-character recovery code. Write the code on paper: it is the wallet, and anyone who sees it can spend.</li>
@@ -390,9 +390,9 @@ python demo.py                               # the math, step by step, with timi
 
   // Viewpoint switcher: the same transaction, seen by three people.
   var views = {
-    stranger: { mine: [], amounts: ["sealed", "sealed"], text: "Someone spent one of 32 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 32 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 32 is twice Monero's, not the whole chain." },
-    accountant: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "The view key opens output #0: it is Bob's, 12.5 VESP incoming. Output #1 stays sealed because it belongs to someone else (it is Alice's change, though the accountant cannot know that). The accountant cannot tell which of the 32 ring members was really spent either. It can list Bob's incoming payments forever and cannot spend a single one." },
-    bob: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "Bob sees output #0 as his and reads its amount with his view key; he alone can derive its one-time private key and spend it. When he does, his input will name 32 outputs and a fresh spent marker, and nothing will say which of the 32 was his." }
+    stranger: { mine: [], amounts: ["sealed", "sealed"], text: "Someone spent one of 48 possible outputs and made two sealed outputs. The chain verified three things without learning which output, who, or how much: the ring signature (one of the 48 is really theirs), the spent marker (never seen before), and that sealed inputs equal sealed outputs plus the fee. Known limit: a crowd of 48 is three times Monero's, not the whole chain." },
+    accountant: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "The view key opens output #0: it is Bob's, 12.5 VESP incoming. Output #1 stays sealed because it belongs to someone else (it is Alice's change, though the accountant cannot know that). The accountant cannot tell which of the 48 ring members was really spent either. It can list Bob's incoming payments forever and cannot spend a single one." },
+    bob: { mine: ["out0"], amounts: ["12.5 VESP", "sealed"], text: "Bob sees output #0 as his and reads its amount with his view key; he alone can derive its one-time private key and spend it. When he does, his input will name 48 outputs and a fresh spent marker, and nothing will say which of the 48 was his." }
   };
   var tabs = document.querySelectorAll(".tab");
   function show(name) {

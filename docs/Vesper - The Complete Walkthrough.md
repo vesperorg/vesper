@@ -9,8 +9,8 @@ This is the complete picture of Vesper as it stands on 18 October 2026, the day 
 ## 1.1 What exists
 
 - A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 44-check self-test that passes (node v0.9.0).
-- Testnet-1, decided 18 October 2026: a public test network with test coins (tVESP, addresses start `tvsp2`, no value ever), ring size 32, a genesis block tied to the newest Bitcoin block at launch, and a seed node on a rented server (kit in `deploy/`).
-- Four privacy layers built and tested: hidden receivers (stealth addresses, as many per wallet as you like, and view keys), hidden amounts (commitments and one range proof per payment), hidden senders (rings of 32 with decoys drawn from measured spending, and key images), and network privacy (a payment travels node to node before any node broadcasts it, with the remaining leak measured by `leaktest.py` rather than claimed away).
+- Testnet-1, decided 18 October 2026: a public test network with test coins (tVESP, addresses start `tvsp2`, no value ever), ring size 48 (raised from 32 on 19 October, three times Monero's), a genesis block tied to the newest Bitcoin block at launch, and a seed node on a rented server (kit in `deploy/`).
+- Four privacy layers built and tested: hidden receivers (stealth addresses, as many per wallet as you like, and view keys), hidden amounts (commitments and one range proof per payment), hidden senders (rings of 48 with decoys drawn from measured spending, and key images), and network privacy (a payment travels node to node before any node broadcasts it, with the remaining leak measured by `leaktest.py` rather than claimed away).
 - Payment proofs, wallet recovery codes, Tor through one flag, per-address limits and a peer table built for strangers.
 - A protocol-enforced development fund (10% of each block reward for 4,204,800 blocks) that any observer can audit.
 - Memory-hard mining (Argon2id) chosen so Bitcoin mining chips cannot attack the chain on day one.
@@ -27,7 +27,7 @@ This is the complete picture of Vesper as it stands on 18 October 2026, the day 
 
 ## 1.3 The honest line, which every page holds
 
-Receivers hidden, amounts hidden, sender hidden among 32 (twice Monero's ring, still not everyone), and the first broadcast of a payment comes from a relay rather than the sender's node, with an attacker who runs a tenth of the nodes still guessing right about a tenth of the time: as private as Monero's design, not more. Not "untraceable," not audited, not production software. Those words are earned later, in that order.
+Receivers hidden, amounts hidden, sender hidden among 48 (three times Monero's ring, still not everyone), and the first broadcast of a payment comes from a relay rather than the sender's node, with an attacker who runs a tenth of the nodes still guessing right about a tenth of the time: as private as Monero's design, not more. Not "untraceable," not audited, not production software. Those words are earned later, in that order.
 
 # 2. How Vesper works, layer by layer
 
@@ -49,7 +49,7 @@ Each amount v is replaced by a commitment C = v times H + k times G, with a blin
 
 ## 2.5 Phase 3, stage one: hidden senders
 
-A payment's input no longer names the output it spends. It lists a ring of exactly 32 existing outputs in sorted order and carries one CLSAG-style ring signature proving the signer owns one of them. A key image, a one-way marker derived from the real output's private key, is published; nodes keep the set of key images, so a second spend of the same output produces the same marker and is refused, with nobody learning which output it was. A pseudo-output commitment keeps the amount arithmetic working inside the ring. Decoys are drawn as ages from the spending pattern Monero's wallets use (fitted to real spends) and placed in the line of outputs with the chain's recent pace; an attacker who knows the rule names the real coin 3.0% of the time at the ring of 32, where 3.1% is fair (7.2% at 16), assuming Vesper's users spend like Monero's. The known weakness, stated everywhere: a crowd of 32 is twice Monero's crowd and still not everyone. You chose 32 on 18 October 2026 (54 ms per payment and 7.3 kB, against 45 ms and 5.1 kB at 16); 64 was measured too (82 ms, 11.7 kB, 1.8%) and judged not worth the cost until stage two's shape is known. The ring size is hashed into the genesis block. A coin, reward or payment, can be spent or used as a decoy only once it is 10 blocks old (Monero waits 20), so a fresh chain needs 32 such coins, about 42 blocks or ten to twenty minutes, before its first payment. Wallets fetch a ring's 32 members together, their own coin among them, so an honest node cannot tell which is real; a dishonest node could feed chosen decoys, which is why real privacy means running your own node.
+A payment's input no longer names the output it spends. It lists a ring of exactly 48 existing outputs in sorted order and carries one CLSAG-style ring signature proving the signer owns one of them. A key image, a one-way marker derived from the real output's private key, is published; nodes keep the set of key images, so a second spend of the same output produces the same marker and is refused, with nobody learning which output it was. A pseudo-output commitment keeps the amount arithmetic working inside the ring. Decoys are drawn as ages from the spending pattern Monero's wallets use (fitted to real spends) and placed in the line of outputs with the chain's recent pace; an attacker who knows the rule names the real coin 2.1% of the time at the ring of 48, where 2.1% is fair (3.0% at 32, 6.2% at 16), assuming Vesper's users spend like Monero's. The known weakness, stated everywhere: a crowd of 48 is three times Monero's crowd and still not everyone. You chose 48 on 19 October 2026 (64 ms per payment and 9.5 kB, against 45 ms and 5.1 kB at 16 and 54 ms and 7.3 kB at 32); 64 was measured too (82 ms, 11.7 kB, 1.8%) and judged not worth the extra cost until stage two's shape is known. The ring size is hashed into the genesis block. A coin, reward or payment, can be spent or used as a decoy only once it is 10 blocks old (Monero waits 20), so a fresh chain needs 48 such coins, about 58 blocks or fifteen to thirty minutes, before its first payment. Wallets fetch a ring's 48 members together, their own coin among them, so an honest node cannot tell which is real; a dishonest node could feed chosen decoys, which is why real privacy means running your own node.
 
 ## 2.6 Phase 3, stage two: hiding among everyone
 
@@ -77,8 +77,8 @@ Proof of work is Argon2id over the block header, 32 MiB of memory and one pass p
 |---|---|---|
 | Who received a payment | hidden | hidden |
 | The amount | hidden | hidden |
-| Which output was spent | one of 32 | hidden among all |
-| Who sent it | one of 32 | hidden among all |
+| Which output was spent | one of 48 | hidden among all |
+| Who sent it | one of 48 | hidden among all |
 | Which computer first broadcast it | a relay's, not the sender's; an attacker with x% of nodes guesses right about x% of the time; Tor hides each node's address | the same |
 | Fee, counts, transaction size, which block | public | public |
 | Mining reward amounts, fund income and spending | public by design | public by design |
@@ -89,10 +89,10 @@ Adversaries the design considers: a passive observer with the whole chain; a net
 
 | Operation | Cost on your PC | Note |
 |---|---|---|
-| Build a payment | about 0.4 s at a ring of 32 while the PC also mines (204 ms at 16, idle) | sender, once; includes the range proof and ring signature |
-| Node accepts a payment | 54 ms at the ring of 32 (45 at 16) | every node, once |
-| Validate a block of 20 payments, fresh node | 23 ms per payment (15.1 at a ring of 16) | range proofs batched, ring signatures not |
-| Ring signature | 18 ms to sign, 17 ms to verify at a ring of 32 (9 and 10 at 16) | per input; grows with the ring |
+| Build a payment | about half a second at a ring of 48 while the PC also mines (204 ms at 16, idle) | sender, once; includes the range proof and ring signature |
+| Node accepts a payment | 64 ms at the ring of 48 (45 at 16, 54 at 32) | every node, once |
+| Validate a block of 20 payments, fresh node | 33 ms per payment (15.1 at 16, 23 at 32) | range proofs batched, ring signatures not |
+| Ring signature | 26 ms to sign, 26 ms to verify at a ring of 48 (18 and 17 at 32; 9 and 10 at 16) | per input; grows with the ring |
 | Scan one output with a view key | 0.11 ms someone else's, 0.7 ms your own | wallet, per new output only |
 | Wallet re-check when nothing is new | about 15 ms | wallet, each time it opens |
 | Restart a node on blocks it already checked | 0.035 ms per block | about 40 s for a year of 30-second blocks |
@@ -100,8 +100,8 @@ Adversaries the design considers: a passive observer with the whole chain; a net
 | Check a block's proof of work | 11 ms | one Argon2id evaluation |
 | Mining rate | about 90 tries per second per core; 300 to 420 on eight | Argon2id, 32 MiB; worker processes |
 | Memory | newest 1,000 blocks whole; about 0.65 kB per output for the ledger | older blocks read back from disk |
-| One payment on disk | about 3.1 kB binary, 7.3 kB as JSON (2.2 and 5.1 at a ring of 16) | 1,152 bytes ring signature, one 736-byte range proof |
-| Cost per layer on a node | 4 ms, then 8.4, then 18.6, then 15.1, then 23 | receivers, amounts, senders (ring 16), one joint proof per payment, ring of 32 |
+| One payment on disk | about 4 kB binary, 9.5 kB as JSON (3.1 and 7.3 at 32; 2.2 and 5.1 at 16) | 1,600 bytes ring signature, one 736-byte range proof |
+| Cost per layer on a node | 4 ms, then 8.4, then 18.6, then 15.1, then 23, then 33 | receivers, amounts, senders (ring 16), one joint proof per payment, ring of 32, ring of 48 |
 
 With the demo settings (30-second blocks, 200 payments per block) the chain moves about seven payments a second, Bitcoin's range. The real limit is the Python node, not the math, which is why the hardened node comes before genesis.
 
@@ -133,7 +133,7 @@ With the demo settings (30-second blocks, 200 payments per block) the chain move
 
 ## 5.3 The two-person test, as recorded
 
-Recorded on node v0.9.0 at testnet-1 settings on 19 October 2026 by `python testdrive.py`, which runs the whole test on two throwaway nodes with a throwaway network of their own. Alice mined 41 blocks (32 coins old enough after 176 seconds of fast test mining) and paid Bob 12.5 tVESP; her node handed the payment quietly to one peer instead of broadcasting it; Bob read it on his own node among 45 outputs in 0.0 seconds; his accountant's view key saw the same payment and could not spend; a search of the raw chain file for both addresses and the amount found nothing; the transaction on chain showed a ring of 32, a key image, a 32-response signature, two sealed outputs and one 736-byte range proof, 7,303 bytes of JSON; Bob paid 3 back from his node once his coin was 10 blocks old, and his node passed it to one peer rather than broadcasting; his wallet then showed 9.49999 tVESP; node 2 re-validated all 55 blocks offline in 2.6 seconds; an overspend, a replayed transaction, a mistyped address and a view-key file trying to spend were all refused with plain-English reasons, and a doctored chain file was named by block and repaired from the other node. The script ends "14 of 14 checks behaved as the test drive page says." The full transcript with commands is on the test-drive page.
+Recorded on node v0.9.0 at testnet-1 settings on 19 October 2026 by `python testdrive.py`, which runs the whole test on two throwaway nodes with a throwaway network of their own. Alice mined 57 blocks (48 coins old enough after 499 seconds of fast test mining) and paid Bob 12.5 tVESP; her node handed the payment quietly to one peer instead of broadcasting it; Bob read it on his own node among 61 outputs in 0.0 seconds; his accountant's view key saw the same payment and could not spend; a search of the raw chain file for both addresses and the amount found nothing; the transaction on chain showed a ring of 48, a key image, a 48-response signature, two sealed outputs and one 736-byte range proof, 9,479 bytes of JSON; Bob paid 3 back from his node once his coin was 10 blocks old, and his node passed it to one peer rather than broadcasting; his wallet then showed 9.49999 tVESP; node 2 re-validated all 70 blocks offline in 2.0 seconds; an overspend, a replayed transaction, a mistyped address and a view-key file trying to spend were all refused with plain-English reasons, and a doctored chain file was named by block and repaired from the other node. The script ends "14 of 14 checks behaved as the test drive page says." The full transcript with commands is on the test-drive page.
 
 # 6. The launch plan
 
@@ -160,7 +160,7 @@ A privacy-coin community treats any pre-launch allocation as a sign the coin exi
 | Difficulty algorithm | per-block ASERT-style step (done) | keep; retune the half-life with the mainnet block time | small chains get wrecked by hash-and-run miners otherwise |
 | Block size | at most 200 payments and 4,000,000 bytes | flexible with a penalty for sudden growth (Monero style) | privacy payments are large; fee auctions hurt; the byte cap keeps every block relayable |
 | Spend lock | 10 blocks for rewards and payments (done) | keep one lock; consider a longer one for rewards before mainnet | reorganisations cannot invalidate payments made with fresh coins; one number keeps ring lookups simple |
-| Ring size | 32 (decided 18 October 2026) | keep 32 unless stage two replaces the ring | hashed into block 0; 16 / 32 / 64 measured at 45 / 54 / 82 ms per payment, 5.1 / 7.3 / 11.7 kB, and 5.5 / 3.0 / 1.8% for an informed attacker |
+| Ring size | 48 (decided 19 October 2026, three times Monero's) | keep 48 unless stage two replaces the ring | hashed into block 0; 16 / 32 / 48 / 64 measured at 45 / 54 / 64 / 82 ms per payment, 5.1 / 7.3 / 9.5 / 11.7 kB, and 6.2 / 3.0 / 2.1 / 1.8% for an informed attacker |
 | Proof of work | Argon2id 32 MiB | RandomX likely | closes the GPU gap; needs a C library |
 | Development fund | 10% for 4,204,800 blocks | as decided | capped, public, ends |
 | Burning | none | none | not provable on a private chain without glass-box outputs, and it starves miners |
@@ -169,7 +169,7 @@ These go in the code, so they are agreed with the code session and published wit
 
 ## 6.4 Gates before genesis, in order
 
-1. Testnet-1 (decided 18 October 2026, launching with the publication; ring 32, phase 4 and its leak test shipped 15 October) with a standing bounty for anyone who can trace a payment.
+1. Testnet-1 (decided 18 October 2026, launching with the publication; ring 48 from 19 October, phase 4 and its leak test shipped 15 October) with a standing bounty for anyone who can trace a payment.
 2. The seed node on a rented server, so the network has a first peer that never points at your home.
 3. An independent cryptographic audit of the protocol and the implementation.
 4. The hardened production node, built from the Python reference once the protocol is frozen.
@@ -301,7 +301,7 @@ You own the project, the decisions, the entity, the mining, and the public face.
 | One-time key | The key a payment is locked to; fresh for every output; recognisable only by the receiver. |
 | Commitment | The sealed amount. Adds up so nodes can check balance without reading it. |
 | Range proof | One 736-byte proof per payment that none of its sealed amounts is negative. Batch-verified per block. |
-| Ring | The 32 outputs an input could be spending; sorted; the real one is among them. |
+| Ring | The 48 outputs an input could be spending; sorted; the real one is among them. |
 | Key image | The one-way spent marker of the real output. Repeated means double spend. |
 | Pseudo-output | A commitment that lets the amount arithmetic work inside a ring. |
 | Development fund | 10% of each reward for 4,204,800 blocks, auditable, glass-box spending. |

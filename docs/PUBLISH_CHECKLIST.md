@@ -23,7 +23,7 @@
 8. **Rent the seed server** (a small Ubuntu machine from a provider that does not need your name, paid in a way that does not point at you; never your home connection). Follow `deploy/README.md`: copy the repository there and run `deploy/setup-seed.sh`; it refuses to start if the self-test fails, opens only SSH and port 8880, and mines on one core.
 9. **Send back the seed address** (`http://IP:8880`). It goes into `config.json` "peers" and the Join page, and that commit is pushed. Testnet-1 is open from that moment.
 
-Testnet-1 facts the pages rely on (from the code session, node v0.9.0): ring size 32; test coins tVESP, addresses start `tvsp2`, 98 characters, no value ever; genesis made by `launch_genesis.py` and tied to the newest Bitcoin block at launch. If publishing is more than a day or two after the genesis was made, the code session re-makes it (`python launch_genesis.py testnet-1`) so the genesis ID changes: the pages describe the method and point to README for the exact block and ID, and quote them only once final.
+Testnet-1 facts the pages rely on (from the code session, node v0.9.0): ring size 48 (raised from 32 on 2026-10-19 before the first peer); test coins tVESP, addresses start `tvsp2`, 98 characters, no value ever; genesis made by `launch_genesis.py` and tied to the newest Bitcoin block at launch. If publishing is more than a day or two after the genesis was made, the code session re-makes it (`python launch_genesis.py testnet-1`) so the genesis ID changes: the pages describe the method and point to README for the exact block and ID, and quote them only once final.
 
 ## Already done
 
