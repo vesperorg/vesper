@@ -30,6 +30,9 @@ def default_processes() -> int:
 def _worker(index: int, tasks, results) -> None:
     from powcore import disable_windows_power_throttling, pow_digest   # light on purpose: see powcore.py
     disable_windows_power_throttling()
+    if hasattr(os, "nice"):
+        os.nice(10)                              # mining yields to the node itself: on a one-core server the
+                                                 # node must still answer peers while it mines
     results.cancel_join_thread()                 # never hang on exit over an unread progress report
     parent = mp.parent_process()
     job = None

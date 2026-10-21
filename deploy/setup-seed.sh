@@ -19,6 +19,17 @@ echo "== 1/6  packages"
 apt-get update -q
 apt-get install -y -q python3 python3-venv python3-pip git ufw curl
 
+# A small server (1-2 GB) gets swap space, so a burst of memory slows the node instead of the
+# kernel killing it.
+if [ "$(awk '/MemTotal/ {print $2}' /proc/meminfo)" -lt 3000000 ] && ! swapon --show | grep -q .; then
+  echo "== small server: adding 2 GB of swap space"
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
 echo "== 2/6  the code, in $APP"
 id vesper >/dev/null 2>&1 || useradd --system --home "$DATA" --shell /usr/sbin/nologin vesper
 if [ -d "$APP/.git" ]; then git -C "$APP" pull --ff-only; else git clone --depth 1 "$REPO" "$APP"; fi

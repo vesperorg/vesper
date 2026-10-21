@@ -45,7 +45,8 @@ every node that starts finds it.
 | Stop, start | `sudo systemctl stop vesper-node`, `sudo systemctl start vesper-node` |
 
 The service runs as its own user with no rights outside its data folder (`/var/lib/vesper`),
-and is limited to 2 GB of memory. The node's own limits apply as everywhere: requests per
+and may use at most 85% of the server's memory; a server with less than 3 GB also gets 2 GB of swap space, so a
+burst of memory slows the node instead of stopping it. Mining runs at low priority, so the node keeps answering peers. The node's own limits apply as everywhere: requests per
 address, a ban for rule-breakers, 64 connections at once and 8 per address, 20 s for a silent
 connection, blocks at most 4 MB.
 
