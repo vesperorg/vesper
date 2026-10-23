@@ -111,9 +111,8 @@ receipt.
 | 4 | `explorer.bat` | Watch new blocks arrive, and see that no payment shows a name or an amount. |
 | 5 | `wallet.bat` | Your balance. To pay someone: `python coin.py send <their address> <amount>` |
 
-New coins can be spent 10 blocks after they arrive, about 5 minutes. The first public seed node,
-the address new nodes use to find the network, is being set up; once it is listed in
-`config.json`, a new node finds the others by itself.
+New coins can be spent 10 blocks after they arrive, about 5 minutes. A new node finds the network
+by itself through the public seed node listed in `config.json` (`http://207.148.85.83:8880`).
 
 **Check the fair start yourself.** The network is called testnet-1. Its first block names
 Bitcoin block 972,206 (`00000000000000000001d78e9be4ec3758abe09510a60591cf282b316f042b67`), which
