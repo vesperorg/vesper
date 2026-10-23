@@ -154,8 +154,8 @@ A privacy-coin community treats any pre-launch allocation as a sign the coin exi
 | Parameter | Demo today | Recommendation for mainnet | Why |
 |---|---|---|---|
 | Block time | 30 s | 60 to 120 s | fewer accidental forks, still fast confirmation |
-| Emission | 50 per block, halving every 2,000 blocks | smooth decreasing curve with a small tail emission forever | miners are always paid, so the chain is always defended; no reward cliffs |
-| Supply cap | about 200,000 | no hard cap (the tail), curve published with genesis | the tail makes inflation trend to zero without a cliff |
+| Emission | 50 per block, halving every 2,000 blocks | DECIDED: a smooth curve (each block pays 1/4,194,304 of an 18 M main curve not yet issued, 4.29 per 30 s block at first), then a tail from about year 13 of 0.15 per 30 s block, down 0.01 every 6 years to 0.10 at about year 43, then 0.10 forever | miners are always paid, so the chain is always defended; no reward cliffs |
+| Supply cap | about 200,000 | DECIDED: no hard cap; about 21.5 M at year 43, 27.4 M at year 100 | inflation under 1% from year 13, 0.49% at year 43, falling toward zero without a cliff |
 | Decimals | 8 | 8 or 12 | readability of everyday amounts; decide with the curve |
 | Difficulty algorithm | per-block ASERT-style step (done) | keep; retune the half-life with the mainnet block time | small chains get wrecked by hash-and-run miners otherwise |
 | Block size | at most 200 payments and 4,000,000 bytes | flexible with a penalty for sudden growth (Monero style) | privacy payments are large; fee auctions hurt; the byte cap keeps every block relayable |
