@@ -38,7 +38,8 @@ RING = 4          # small rings keep the tests quick; the speed report uses the 
 CONFIG = deep_merge(load_config(), {"consensus": {
     "initial_difficulty": 64, "min_difficulty": 1, "difficulty_halflife_seconds": 0,     # fixed, tiny difficulty
     "output_lock_blocks": 0,                                                          # most tests spend at once
-    "ring_size": RING, "pow": {"memory_kib": 8}, "dev_fund": {"address": ""}}})
+    "ring_size": RING, "pow": {"memory_kib": 8}, "dev_fund": {"address": ""}},
+    "network": {"peers": []}})                                                        # never the real seed nodes
 REAL = load_config()["consensus"]
 PREFIX = CONFIG["coin"]["address_prefix"]
 DECIMALS = int(CONFIG["coin"]["decimals"])
@@ -727,6 +728,8 @@ def test_longest_chain_wins_and_orphans_return():
     assert a.replace_chain(b.blocks) is True and a.height == 3
     assert balance(a, ma) == 0 and balance(a, mb) == coins("150")
     assert a.replace_chain(a_before) is False
+    assert a.forks == {"reorganisations": 1, "blocks_orphaned": 2, "competing_blocks_lost": 2}, a.forks
+    assert a.info()["forks_since_start"]["blocks_orphaned"] == 2
     a2 = new_chain()
     alice, bob, other = (Wallet.generate(PREFIX) for _ in range(3))
     mine(a2, alice, RING)

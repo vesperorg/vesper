@@ -860,6 +860,9 @@ class Blockchain:
         self.known_txids: dict[str, int] = {}            # txid -> the block it is in
         self.output_counts: list[int] = [0]              # how many outputs exist after each block
         self.work = 0                                    # total tries behind the chain: what fork choice compares
+        # since this node started: switches to another branch, the blocks those switches threw away,
+        # and valid competing blocks that lost (what tells whether the block time is too short)
+        self.forks = {"reorganisations": 0, "blocks_orphaned": 0, "competing_blocks_lost": 0}
         self.mempool: dict[str, dict] = {}
         self.mempool_bytes = 0
         self.mempool_version = 0                         # goes up with every change; the miner watches it
@@ -1660,6 +1663,7 @@ class Blockchain:
                 "curve_backend": BACKEND, "genesis_hash": self.blocks.hash_at(0), "network": self.network,
                 "pow": {"algorithm": self.pow_algorithm, "memory_kib": self.pow_memory_kib, "passes": self.pow_passes},
                 "dev_fund": self.dev_fund_info(),
+                "forks_since_start": dict(self.forks),
             }
 
     def dev_fund_info(self) -> dict:
@@ -1905,7 +1909,12 @@ class Fork:
             if chain.tip["hash"] != self.tip_hash:
                 raise ChainError("the chain moved on while another branch was being checked; it will be looked at again")
             if not self.added or self.work <= chain.work:
+                if self.added and self.orphaned:
+                    chain.forks["competing_blocks_lost"] += len(self.added)
                 return False
+            if self.orphaned:
+                chain.forks["reorganisations"] += 1
+                chain.forks["blocks_orphaned"] += len(self.orphaned)
             returning = [tx for b in self.orphaned for tx in b["transactions"][1:]]
             chain.state.rewind(self.orphaned)
             chain.state.absorb(self.view)
