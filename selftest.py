@@ -1784,6 +1784,82 @@ def test_phase4_limits_and_bans():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_a_node_nobody_can_reach_hands_over_its_branch():
+    """A node behind a home router or Tor cannot be reached, so a seed that falls behind it
+    could never fetch its blocks and the two would stay on different branches for good (it
+    happened on testnet-1).  Now the node hands its heavier side over itself, a batch at a
+    time, every block checked on arrival.  Also: a node does not mine while it catches up,
+    and only one process can use a data folder."""
+    import node as node_module
+    from urllib.parse import parse_qs, urlparse
+    from chain import lock_data_dir
+    from node import Node
+    tmp_a, tmp_b = tempfile.mkdtemp(prefix="vesper-test-"), tempfile.mkdtemp(prefix="vesper-test-")
+    old_batch = node_module.SYNC_BATCH
+    try:
+        seed = Node(CONFIG, tmp_a, "127.0.0.1", 0, [], None, public_url="http://8.8.4.4:8880")
+        home = Node(CONFIG, tmp_b, "127.0.0.1", 0, [], None, public_url="http://8.8.8.8:8880")
+        for n in (seed, home):
+            n._post = lambda *args, **kwargs: None
+        mine(seed.chain, Wallet.generate(PREFIX), 3)
+        assert home.chain.replace_chain(seed.chain.blocks[:])
+        mine(seed.chain, Wallet.generate(PREFIX), 2)                 # the seed's side: 2 blocks
+        mine(home.chain, Wallet.generate(PREFIX), 5)                 # the home node's side: 5, more work
+
+        def seed_answers(peer, path, timeout=5):                     # home can reach the seed ...
+            if path == "/api/info":
+                return seed.info()
+            if path.startswith("/api/hashes"):
+                q = parse_qs(urlparse(path).query)
+                start, limit = int(q["start"][0]), int(q["limit"][0])
+                return {"height": seed.chain.height, "hashes": seed.chain.blocks.hashes[start:start + limit]}
+            raise OSError("no such page")
+        home._get = seed_answers
+        home._request = lambda peer, method, path, payload=None, timeout=5: \
+            seed.receive_branch(json.loads(json.dumps(payload))["blocks"], "203.0.113.7")
+        node_module.SYNC_BATCH = 2                                   # ... and hands over its side in several batches
+        assert home.push_to("http://8.8.4.4:8880") is True
+        assert seed.chain.tip["hash"] == home.chain.tip["hash"], "the seed must end up on the heavier side"
+        assert seed.chain.forks == {"reorganisations": 1, "blocks_orphaned": 2, "competing_blocks_lost": 0}, seed.chain.forks
+        assert home.push_to("http://8.8.4.4:8880") is False, "nothing to hand over once both agree"
+        # the other way round, over a slow link: the home node switches as soon as the seed's side
+        # is heavier and fetches the rest batch by batch (one timeout no longer loses it all)
+        mine(seed.chain, Wallet.generate(PREFIX), 6)
+        mine(home.chain, Wallet.generate(PREFIX), 1)
+
+        def seed_serves(peer, path, timeout=5):
+            if path.startswith("/api/blocks"):
+                q = parse_qs(urlparse(path).query)
+                return {"height": seed.chain.height,
+                        "blocks": json.loads(json.dumps(seed.chain.blocks_from(int(q["start"][0]), int(q["limit"][0]))))}
+            return seed_answers(peer, path, timeout)
+        home._get = seed_serves
+        assert home.sync_from("http://8.8.4.4:8880") is True
+        assert home.chain.tip["hash"] == seed.chain.tip["hash"], "after the early switch the rest must follow"
+        expect_error(lambda: seed.receive_branch([dict(seed.chain.tip, index=999, previous_hash="00" * 32)], "203.0.113.8"),
+                     "does not start")
+        expect_error(lambda: seed.receive_branch([{"index": 1}], "203.0.113.8"), "malformed")
+        expect_error(lambda: seed.receive_branch([seed.chain.tip] * 3, "203.0.113.8"), "batches")
+        # no mining while catching up, nor before the peers have been asked once
+        home.first_sync_done.clear()
+        home.miner.started_at = time.time()
+        assert not home.miner.may_mine()
+        home.first_sync_done.set()
+        home.catching_up.set()
+        assert not home.miner.may_mine()
+        home.catching_up.clear()
+        assert home.miner.may_mine()
+        # one process per data folder
+        held = lock_data_dir(tmp_a)
+        expect_error(lambda: lock_data_dir(tmp_a), "already using")
+        held.close()
+        lock_data_dir(tmp_a).close()
+    finally:
+        node_module.SYNC_BATCH = old_batch
+        shutil.rmtree(tmp_a, ignore_errors=True)
+        shutil.rmtree(tmp_b, ignore_errors=True)
+
+
 def test_phase4_one_peer_cannot_fill_the_peer_table():
     """Gossip only suggests addresses.  A node checks a couple per round, keeps its peers spread
     over different networks, sends nothing to home-network addresses it heard about, and passes
@@ -2145,6 +2221,7 @@ TESTS = [
     test_phase4_the_first_broadcast_does_not_come_from_the_sender,
     test_phase4_limits_and_bans,
     test_phase4_one_peer_cannot_fill_the_peer_table,
+    test_a_node_nobody_can_reach_hands_over_its_branch,
     test_phase4_peers_can_be_reached_through_tor,
     test_phase4_silent_connections_cannot_lock_the_node,
     test_phase4_leak_measurement,

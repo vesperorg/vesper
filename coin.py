@@ -31,7 +31,7 @@ import urllib.request
 
 import socksproxy
 from curve import scalar_from_hex
-from chain import Blockchain, ChainError, build_transfer, format_units, load_config, resolve_data_dir, to_units
+from chain import Blockchain, ChainError, build_transfer, format_units, load_config, lock_data_dir, resolve_data_dir, to_units
 from privacy import LOOKAHEAD, is_valid_address
 from wallet import Wallet, WalletError, WalletLocked, sync_outputs
 
@@ -587,6 +587,12 @@ def cmd_peers(ctx: Ctx, args) -> None:
 
 def cmd_reset_chain(ctx: Ctx, args) -> None:
     """Start the chain over.  Removes the saved blocks, mempool and peer list - never the wallets."""
+    try:
+        held = lock_data_dir(ctx.data_dir)        # never pull the chain file from under a running node
+    except ChainError:
+        raise CliError("a node is running on %s: stop it first (Ctrl+C in its window), then run reset-chain again"
+                       % shown(ctx.data_dir))
+    held.close()
     removed = []
     for name in ("chain.jsonl", "mempool.json", "peers.json", "verified_tip.json", "chain.jsonl.tmp", "mempool.json.tmp"):
         path = os.path.join(ctx.data_dir, name)

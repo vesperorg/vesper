@@ -127,6 +127,28 @@ class BadBlock(ChainError):
 
 
 # ----------------------------------------------------------------------------- config
+def lock_data_dir(data_dir: str):
+    """Claim the data folder for this process.  Two nodes on one folder write the same chain
+    file at once and corrupt it, and `reset-chain` under a running node pulls the file away
+    from under it.  Returns an open file whose lock lasts as long as it stays open (or the
+    process lives); raises ChainError if another process holds the folder."""
+    os.makedirs(data_dir, exist_ok=True)
+    fh = open(os.path.join(data_dir, "node.lock"), "a+")
+    try:
+        if os.name == "nt":
+            import msvcrt
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        fh.close()
+        raise ChainError("another Vesper node is already using the data folder %s. Only one node can use a "
+                         "data folder: close the other node window first." % os.path.abspath(data_dir))
+    return fh
+
+
 def deep_merge(base: dict, override: dict) -> dict:
     out = copy.deepcopy(base)
     for key, value in (override or {}).items():

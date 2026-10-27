@@ -41,16 +41,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from chain import (BLOCK_KEYS, HERE, MAX_LOOKUP, Blockchain, ChainError, compute_block_hash, disable_windows_power_throttling,
-                   load_config, resolve_data_dir)
+                   load_config, lock_data_dir, resolve_data_dir)
 import socksproxy
 from powpool import PowPool, default_processes
 from privacy import is_valid_address
 from relay import LOCAL, BanList, RateLimiter, StemRouter
 from wallet import Wallet
 
-VERSION = "0.9.0"
+VERSION = "0.9.1"
 PEERS_FILE = "peers.json"
 SYNC_BATCH = 100
+BRANCH_HOLD_SECONDS = 120              # a branch handed over in batches is forgotten if the next batch is this late
 MAX_ANSWER = 16 * 1024 * 1024          # the most this node reads of one peer's answer (big blocks: asked for fewer at a time)
 
 
@@ -168,10 +169,29 @@ class Miner:
                 self.pool.close()
                 self.pool = None
 
+    def may_mine(self) -> bool:
+        """Not while this node is catching up with a peer that is ahead of it, nor before it has
+        asked its peers once (two minutes at most).  Blocks mined on an old tip are thrown away,
+        and a node that mines while it downloads keeps clashing with the chain it is fetching."""
+        if self.node.catching_up.is_set():
+            return False
+        return self.node.first_sync_done.is_set() or time.time() - (self.started_at or 0) > 120
+
     def _mine(self, per_check: int) -> None:
+        waiting = False
         while not self._stop.is_set():
+            if not self.may_mine():
+                if not waiting:
+                    log.info("mining waits until this node has caught up with the network")
+                    waiting = True
+                self._stop.wait(1)
+                continue
+            if waiting:
+                log.info("caught up - mining")
+                waiting = False
             try:
-                block = self.node.chain.mine_block(self.address, should_abort=self._stop.is_set,
+                block = self.node.chain.mine_block(self.address,
+                                                   should_abort=lambda: self._stop.is_set() or self.node.catching_up.is_set(),
                                                    hashes_per_check=per_check, on_progress=self._progress, pool=self.pool)
             except RuntimeError as exc:                  # the worker processes died: carry on, on one core
                 log.warning("%s; mining continues on one core", exc)
@@ -238,6 +258,10 @@ class Node:
         self._seen: dict[str, float] = {}
         self._seen_lock = threading.Lock()
         self._sync_lock = threading.Lock()
+        self.catching_up = threading.Event()          # set while a peer ahead of us is being caught up with
+        self.first_sync_done = threading.Event()      # set once every peer has been asked
+        self._inbound = None                          # (sender, fork, last batch time): a branch being handed to us
+        self._inbound_lock = threading.Lock()
         # phase 4: payments on their way along a stem, and the limits per internet address
         self.router = StemRouter()
         self.stempool: dict[str, dict] = {}            # txid -> {"tx", "deadline", "spends"}
@@ -250,6 +274,8 @@ class Node:
         for peer, origin in self._load_peers():
             self.add_peer(peer, announce=False, save=False, origin=origin)
         self._save_peers()
+        if not self.peers:
+            self.first_sync_done.set()                # nobody to ask: nothing to wait for
 
     # ---- peers --------------------------------------------------------------
     @staticmethod
@@ -616,9 +642,11 @@ class Node:
             if their_work <= self.chain.cumulative_work():
                 return False
             log.info("peer %s has more work (height %s vs our %d) - catching up", peer, info.get("height"), self.chain.height)
+            self.catching_up.set()
             changed = self._extend_from(peer)
-            if their_work > self.chain.cumulative_work():
-                changed = self._switch_fork(peer) or changed
+            if their_work > self.chain.cumulative_work() and self._switch_fork(peer):
+                changed = True
+                self._extend_from(peer)                   # the rest of its chain, one batch at a time
             if changed:
                 log.info("caught up with %s: now at height %d", peer, self.chain.height)
                 self.broadcast("/api/block", self.chain.tip)
@@ -633,8 +661,87 @@ class Node:
         except Exception as exc:
             log.debug("sync from %s failed: %s", peer, exc)
         finally:
+            self.catching_up.clear()
             self._sync_lock.release()
         return False
+
+    def push_to(self, peer: str) -> bool:
+        """The other direction of catching up.  A node behind a home router or Tor has no address
+        a peer can reach, so a peer that falls behind it can never fetch its blocks, and the two
+        would stay on different branches for good.  When this node has more work than the peer,
+        it hands the peer its side of the chain itself, a batch at a time (`receive_branch`)."""
+        info = self._get(peer, "/api/info")
+        if info.get("genesis_hash") != self.chain.blocks.hash_at(0):
+            return False
+        if self.chain.cumulative_work() <= int(info.get("work", 0)):
+            return False
+        with self.chain.lock:
+            ours = self.chain.blocks.hashes[:]
+        common, top = 0, min(len(ours), int(info.get("height", 0)) + 1)
+        while top > 1 and common == 0:                    # walk back from the peer's tip, as _switch_fork does
+            start = max(1, top - 500)
+            theirs = self._get(peer, "/api/hashes?start=%d&limit=%d" % (start, top - start), timeout=30).get("hashes", [])
+            for offset in range(min(len(theirs), top - start) - 1, -1, -1):
+                if theirs[offset] == ours[start + offset]:
+                    common = start + offset
+                    break
+            top = start
+        log.info("peer %s is behind us since block %d - handing it our side", peer, common)
+        nxt, switched = common + 1, False
+        while nxt < len(ours) and not self.stop_event.is_set():          # to our tip, also after it switches
+            batch = self.chain.blocks_from(nxt, SYNC_BATCH)
+            while len(batch) > 1 and len(json.dumps(batch)) > MAX_BODY // 2:
+                batch = batch[:len(batch) // 2]
+            answer = self._request(peer, "POST", "/api/branch", {"blocks": batch}, 60)
+            nxt += len(batch)
+            switched = switched or bool(answer.get("switched"))
+        if switched:
+            log.info("peer %s took our side of the chain", peer)
+        return switched
+
+    def receive_branch(self, blocks, sender: str) -> dict:
+        """A peer this node cannot reach hands it the peer's side of the chain (see push_to).
+        Every block is checked as it arrives, against the ledger where the two sides part, and
+        the node switches only once that side has more work than its own.  One sender at a time;
+        a side left unfinished for two minutes is forgotten."""
+        if not isinstance(blocks, list) or not 0 < len(blocks) <= SYNC_BATCH:
+            raise ChainError("a branch comes in batches of 1 to %d blocks" % SYNC_BATCH)
+        for block in blocks:
+            if not isinstance(block, dict) or set(block) != BLOCK_KEYS or type(block["index"]) is not int:
+                raise ChainError("malformed block")
+        chain, now = self.chain, time.time()
+        with self._inbound_lock:
+            held = self._inbound
+            if held and now - held[2] > BRANCH_HOLD_SECONDS:
+                held = self._inbound = None
+            if held and held[0] != sender:
+                raise Refused(409, "busy with another peer's branch; try again in a few minutes")
+            first = blocks[0]
+            fork = held[1] if held else None
+            if fork is None or first["previous_hash"] != fork.added[-1]["hash"]:
+                parent = first["index"] - 1
+                with chain.lock:
+                    if not 0 <= parent <= chain.height or chain.blocks.hash_at(parent) != first["previous_hash"]:
+                        self._inbound = None
+                        raise ChainError("the branch does not start from a block this node has")
+                fork = chain.begin_fork(parent)
+            try:
+                for block in blocks:
+                    fork.add(block)                       # the first block that breaks a rule ends it
+            except ChainError:
+                self._inbound = None
+                raise
+            if fork.work <= chain.work:
+                self._inbound = (sender, fork, now)
+                return {"switched": False, "height": chain.height, "held": len(fork.added)}
+            self._inbound = None
+            switched = chain.switch_to(fork.common, fork.added, checked=True)
+        if switched:
+            for block in fork.added:
+                self._mark_seen("b:" + block["hash"])
+            log.info("switched to the branch %s handed us: now at height %d", sender, chain.height)
+            self.broadcast("/api/block", chain.tip)
+        return {"switched": switched, "height": chain.height}
 
     def _extend_from(self, peer: str) -> bool:
         """The usual case: the peer is ahead of us on the same chain.  Add its blocks one by one."""
@@ -687,6 +794,10 @@ class Node:
                 fork.add(block)
             if len(batch) < asked:
                 break
+            # Switch as soon as its side has more work than ours, and fetch the rest the usual
+            # way: over a slow link (Tor) a long side fetched in one go is lost to one timeout.
+            if fork.work > self.chain.cumulative_work():
+                break
         if not fork.added:
             return False
         # Our own chain may have grown while that was going on, so the switch itself is done
@@ -696,6 +807,10 @@ class Node:
     def sync_once(self) -> None:
         for peer in list(self.peers):
             self.sync_from(peer)
+            try:
+                self.push_to(peer)
+            except Exception as exc:
+                log.debug("handing our side to %s failed: %s", peer, exc)
             if self.announce_url:
                 self._post(peer, "/api/peers", {"peer": self.announce_url})
             try:
@@ -718,6 +833,7 @@ class Node:
                 self.sync_once()
             except Exception:
                 log.exception("sync loop error")
+            self.first_sync_done.set()
             self.stop_event.wait(self.sync_interval)
 
     def info(self, private: bool = False) -> dict:
@@ -1008,7 +1124,7 @@ class Handler(BaseHTTPRequestHandler):
             control = route in (["mine"], ["miner", "start"], ["miner", "stop"])
             local = self._guard(control)
             client_ip = self.client_address[0]
-            kind = "tx" if route[:1] == ["tx"] else "block" if route == ["block"] else "lookup" if route[:1] == ["outputs"] else "read"
+            kind = "tx" if route[:1] == ["tx"] else "block" if route in (["block"], ["branch"]) else "lookup" if route[:1] == ["outputs"] else "read"
             node.admit(client_ip, kind, local)
             body = self._body()
             if not isinstance(body, dict):
@@ -1041,6 +1157,12 @@ class Handler(BaseHTTPRequestHandler):
                     node.penalise(client_ip, 50, local, "blocks that break the rules")
                     raise
                 return self._json({"accepted": accepted, "height": chain.height})
+            if route == ["branch"]:                   # a peer we cannot reach hands us its side of the chain
+                try:
+                    return self._json(node.receive_branch(body.get("blocks"), client_ip))
+                except ChainError:
+                    node.penalise(client_ip, 50, local, "blocks that break the rules")
+                    raise
             if route == ["peers"]:
                 peer = node.claimed_peer(body.get("peer"), client_ip)
                 origin = "announced"
@@ -1126,6 +1248,11 @@ def main(argv=None) -> None:
     host = args.host or config["network"]["host"]
     port = args.port or int(config["network"]["port"])
     data_dir = resolve_data_dir(config, args.data_dir)
+    try:
+        data_lock = lock_data_dir(data_dir)       # kept open for as long as the node runs
+    except ChainError as exc:
+        print(exc)
+        sys.exit(1)
     setup_logging(data_dir, args.verbose)
     if disable_windows_power_throttling():
         log.info("opted out of Windows power throttling (keeps the miner on fast cores)")
@@ -1135,6 +1262,7 @@ def main(argv=None) -> None:
         sys.exit(2)
     try:
         node = Node(config, data_dir, host, port, args.peer, reward, args.public_url)
+        node.data_lock = data_lock
     except ChainError as exc:
         log.error("%s", exc)
         sys.exit(1)
