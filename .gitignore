@@ -13,3 +13,4 @@ node_modules/
 _claude_review/
 *.sent
 ~$*
+*-payment-*.json
