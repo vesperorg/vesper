@@ -65,7 +65,7 @@
   <div class="paper">
     <div class="eyebrow">Vesper &middot; VESP &middot; technical paper, draft 1</div>
     <h1>Vesper: a private-by-default ledger with provable ownership</h1>
-    <div class="meta">October 2026 &middot; draft 3 for review &middot; describes phases 1 to 4 as built and measured (node v0.9.0, testnet-1); stage two of phase 3 as research</div>
+    <div class="meta">October 2026 &middot; draft 3 for review &middot; describes phases 1 to 4 as built and measured (node v0.9.1, testnet-1); stage two of phase 3 as research</div>
 
     <div class="abstract">
       <p><strong>Abstract.</strong> Vesper is a proof-of-work cryptocurrency in which no transaction names its receiver or its amount, and in which the sender is hidden among a ring of 48 outputs today, three times Monero's ring, with membership among every output in the chain as the research target. On the network a payment travels node to node before any node broadcasts it, so the first announcer is a relay rather than the sender, and the remaining leak is measured and published rather than claimed away. Privacy is mandatory: there is no transparent transaction type. Each wallet holds a view key that can reveal that wallet's own history to a party of its choosing without revealing anyone else's, so the system is private by default and provable on demand. Development is funded by a protocol-enforced, publicly auditable share of the block reward that ends after a fixed number of blocks. This paper describes the ledger model, the cryptography of each phase, the consensus rules, and a threat model that states plainly what an observer can and cannot learn at each phase.</p>

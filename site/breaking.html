@@ -76,7 +76,7 @@
 
 <section id="register">
   <div class="wrap">
-    <div class="eyebrow">The register, as of node v0.9.0 (testnet-1), 19 October 2026</div>
+    <div class="eyebrow">The register, as of node v0.9.1 (testnet-1), 27 October 2026</div>
     <h2 class="measure">What an attacker can do today.</h2>
     <div class="tablewrap">
       <table>
@@ -88,6 +88,8 @@
           <tr><td><b>The node has never met strangers.</b> Per-address limits, a one-hour ban for rule-breakers, a peer table that checks gossip before trusting it, connection timeouts, caps on bodies, answers and blocks: all built and tested in simulation and on one PC, none of it against the open internet. Peers talk plain HTTP with no authentication.</td><td>Anyone on the internet, once there is a public network</td><td class="sev med">medium</td><td class="fix">The public testnet is the test; the production node. Until then: private networks, or your own node behind Tor.</td></tr>
           <tr><td><b>In a small network the stem is slow and thin.</b> A payment can take 30 to 75 seconds to be broadcast while it travels the stem, and with only a few nodes the relays are easy to name.</td><td>Nobody directly; it is a cost of phase 4 on small networks</td><td class="sev low">low</td><td class="fix">Grows out of the problem as the network grows; the timers are tunable rules.</td></tr>
           <tr><td><b>The ledger lives in memory,</b> about 0.65 kB per output: fine for a test network's first months, not for years.</td><td>Anyone who runs a node, eventually</td><td class="sev low">low</td><td class="fix">An on-disk ledger and headers-first sync (planned).</td></tr>
+          <tr><td><b>Thirty-second blocks collide.</b> Two miners who find a block within the seconds it takes one to travel (longer over Tor) make competing branches; the shorter the block time, the more often, and collisions favour whoever has the most mining power. Testnet-1's first such split lasted three days because of a sync bug, since fixed; the collisions themselves are inherent.</td><td>Large miners, slow links</td><td class="sev med">medium, being measured</td><td class="fix">Every node now counts reorganisations and orphaned blocks since it started (<code>forks_since_start</code> in <code>/api/info</code>). Testnet-1's numbers decide whether 30 s stays or becomes 45 or 60 before any real network.</td></tr>
+          <tr><td><b>One seed node.</b> A fresh node finds the network through one rented server. If it is down, a new node mines alone until it is back; nodes already connected keep talking to each other.</td><td>Nobody directly; it is a fragility</td><td class="sev low">low</td><td class="fix">A second seed on another provider once outside node runners exist; until then <code>--peer</code> joins any node you know.</td></tr>
           <tr><td><b>Unaudited implementation.</b> The constructions are standard; our code implementing them has been reviewed only by its authors. Privacy bugs are silent.</td><td>Anyone who finds the bug first</td><td class="sev high">high</td><td class="fix">Independent cryptographic audit before genesis; the bounty; your review.</td></tr>
           <tr><td><b>Public by design:</b> the fee (every wallet pays the same minimum for a payment's size), the number of inputs and outputs, the payment's size, which block it landed in, and the 48 candidates for each spend. Outputs of one payment are siblings because they sit in one payment. A payment carries no timestamp and lists its inputs in key-image order, so neither the clock nor the order fingerprints a wallet.</td><td>Anyone</td><td class="sev design">by design</td><td class="fix">Stays. Uniform payment shape (always 2+ outputs in random order, same fee rule, same ring size) keeps the fingerprint small.</td></tr>
           <tr><td><b>Mining reward amounts are public,</b> and so is the development fund's income and spending.</td><td>Anyone</td><td class="sev design">by design</td><td class="fix">Stays. Issuance must be checkable; the fund is a glass box on purpose.</td></tr>
@@ -113,6 +115,10 @@
     <div class="eyebrow">Fixed already</div>
     <h2 class="measure">Things that were true and no longer are.</h2>
     <div class="fixed">
+      <div class="row"><div class="d">2026-10-27</div><div><b>Fixed.</b> On testnet-1 the founder's home node and the seed found block 5,188 at the same moment. The home node, behind a router and later Tor, out-mined the seed on its own branch, but the seed could never reach it to fetch that branch, so the two stayed split for three days. A node with more work now hands its side of the chain to the peer itself, in checked batches of up to 100 blocks; a node no longer mines while it is catching up with a peer that is ahead, nor before it has asked its peers once; and a fork check that times out over Tor keeps its progress instead of starting over. Node v0.9.1.</div></div>
+      <div class="row"><div class="d">2026-10-27</div><div><b>Fixed.</b> Two node processes started on one data folder damaged its chain file. One process per folder now (<code>node.lock</code>), and <code>reset-chain</code> refuses to run while a node is running.</div></div>
+      <div class="row"><div class="d">2026-10-23</div><div><b>Fixed.</b> Once the seed's address went into <code>config.json</code>, the self-test's peer-table check used the real seed list and failed, so the seed server's own update would have refused to restart the node. Self-test nodes now start with an empty peer list.</div></div>
+      <div class="row"><div class="d">2026-10-21</div><div><b>Fixed.</b> On a small rented server the service's memory cap was above the machine's RAM, and mining on the single core starved the node's web side so it stopped answering. Swap is added on machines under 3 GB, the cap is 85% of the machine, and mining runs at low priority so answering peers comes first.</div></div>
       <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> The node had no connection timeout, so 64 idle connections (a "slowloris", a few lines of code) locked every peer and wallet out for as long as they stayed open. Now 20 s, at most 8 slots per address, and the node's own computer is never turned away.</div></div>
       <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Only the number of payments per block was limited, so a valid 18 MB block was possible that no node could relay or fetch, which would have split the network. Blocks are now at most 4,000,000 bytes, by consensus.</div></div>
       <div class="row"><div class="d">2026-10-15</div><div><b>Fixed.</b> Every address a peer mentioned was trusted at once, so one attacker could fill a node's whole peer table (an "eclipse"), decide what it sees and be the first hop of every payment. Gossip is now candidates, checked two a round, at most 2 per network block.</div></div>
@@ -152,7 +158,7 @@
 </section>
 
 <footer>
-  <div class="wrap">Breaking Vesper, updated 19 October 2026 for node v0.9.0, testnet-1 (44 self-test checks; <code>leaktest.py</code> prints the measured numbers quoted above). If a line here is wrong, the test suite or this page is wrong, and we want to know which.</div>
+  <div class="wrap">Breaking Vesper, updated 27 October 2026 for node v0.9.1, testnet-1 (44 self-test checks; <code>leaktest.py</code> prints the measured numbers quoted above). If a line here is wrong, the test suite or this page is wrong, and we want to know which.</div>
 </footer>
 
 </body>
