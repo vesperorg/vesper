@@ -136,7 +136,7 @@ pip install -r requirements.txt
 python selftest.py                           (45 checks; the seed node refuses to start if these fail, so should you)
 python coin.py wallet new                    (write the recovery code on paper; anyone who sees it can spend)
 python node.py --mine                        (finds the network through the seed node listed in config.json)
-python node.py --mine --proxy socks5h://127.0.0.1:9050   (the same, through Tor)
+python node.py --mine --proxy socks5h://127.0.0.1:9150   (the same, through Tor: 9150 is the Tor Browser, 9050 the Tor service)
 python testdrive.py --more                   (the whole test drive on a private chain of its own, 17 checks)</pre>
     <p class="measure muted">The seed node is <span class="mono">http://207.148.85.83:8880</span>, a rented server (never a home connection), and it is already in <code>config.json</code>, so a fresh node finds the network by itself; <code>--peer</code> adds any node a friend runs. You can look at the seed yourself: <a href="http://207.148.85.83:8880/">its explorer</a>, or <span class="mono">http://207.148.85.83:8880/api/info</span> for the raw numbers. <b>What to try:</b> the test drive, then every line of Breaking Vesper. Anything that behaves differently from those pages is a bounty claim.</p>
   </div>

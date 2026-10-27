@@ -11,7 +11,9 @@ anything and nothing here is worth anything: testnet-1 coins (tVESP) are test co
 ## 2. Get Vesper
 
 1. On https://github.com/vesperorg/vesper click the green **Code** button, then **Download ZIP**.
-2. Unzip it somewhere easy, for example `Desktop\vesper`. Every step below happens in that folder.
+2. Unzip it somewhere easy that is NOT synced to the cloud, for example `C:\vesper` (not the
+   Desktop or Documents if OneDrive backs them up: your wallet file would be uploaded, and the
+   sync can fight the node over its files). Every step below happens in that folder.
 3. Open the folder, right-click an empty spot and choose **Open in Terminal** (or hold Shift and
    right-click, then "Open PowerShell window here"). Type:
 
@@ -42,7 +44,8 @@ is readable on the chain. All 45 should pass. If one does not, that is worth rep
 
 ## 5. Make your wallet
 
-Double-click **`wallet.bat`**. Choose a password. It shows your address (it starts with `tvsp`)
+Double-click **`wallet.bat`**. Choose a password and type it when asked (do not leave it empty:
+an empty password saves the wallet unencrypted). It shows your address (it starts with `tvsp`)
 and a 55-character **recovery code**. Write the code on paper and keep it somewhere safe: the code
 is the wallet. Anyone who sees it can spend your coins; if you lose it and your computer, the coins
 are gone. Nobody can reset it.
@@ -57,10 +60,9 @@ there are no addresses on the chain.
 Run **`wallet.bat`** again any time to see your balance. A new coin can be spent 10 blocks after
 it arrives, about 5 minutes.
 
-Your node finds the rest of testnet-1 through the seed node listed in `config.json`. Until that
-address is published (it is announced on the Join page), your node mines a chain of its own; to
-connect to a friend's node directly, start yours with
-`python node.py --peer http://THEIR-ADDRESS:8880 --mine`.
+Your node finds the rest of testnet-1 through the seed node listed in `config.json`, so within a
+minute or two the explorer shows the network's blocks, not just yours. To add a friend's node as
+well, start yours with `python node.py --peer http://THEIR-ADDRESS:8880 --mine`.
 
 ## 7. Pay someone
 
@@ -103,5 +105,7 @@ run `python3 testdrive.py`, `python3 selftest.py`, `python3 coin.py wallet new`,
 
 Vesper is not audited. Test coins have no value, ever. Today it is Monero's design with a bigger
 crowd for every spend, not more; anyone who tells you it is "untraceable" is not us. If your
-internet address matters to you, run your node through Tor: `python node.py --proxy
-socks5h://127.0.0.1:9050 --mine` with the Tor Browser or Tor service running.
+internet address matters to you, run your node through Tor: start the Tor Browser first and keep it
+open, then `python node.py --proxy socks5h://127.0.0.1:9150 --mine` (the Tor Browser listens on
+9150; the separate Tor service listens on 9050). If Tor is not running, the node cannot reach
+anyone and will mine alone.

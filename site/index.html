@@ -336,7 +336,7 @@ python coin.py wallet new-address --label carol   # one more address, for one pa
 python coin.py wallet export-view            # write a view-key file: can see, cannot spend
 python coin.py watch data\wallets\default.viewkey.json   # what an accountant with your view key sees
 python coin.py proof pay TXID                # prove one payment to one person, and nothing else
-python node.py --proxy socks5h://127.0.0.1:9050   # every connection to a peer through Tor
+python node.py --proxy socks5h://127.0.0.1:9150   # every connection to a peer through Tor (9150 = Tor Browser, 9050 = Tor service)
 python demo.py                               # the math, step by step, with timings</pre>
     </div>
   </div>
