@@ -53,7 +53,8 @@ if [ -z "$IP" ]; then echo "could not find this server's public address; edit ve
 sed -e "s#__APP__#$APP#g" -e "s#__DATA__#$DATA#g" -e "s#__PORT__#$PORT#g" -e "s#__IP__#$IP#g" \
     "$APP/deploy/vesper-node.service" > /etc/systemd/system/vesper-node.service
 systemctl daemon-reload
-systemctl enable --now vesper-node
+systemctl enable vesper-node
+systemctl restart vesper-node     # an update must restart it: enable --now leaves a running node on the old code
 
 echo "== 6/6  firewall: SSH and $PORT only"
 ufw allow OpenSSH
