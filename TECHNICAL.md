@@ -113,7 +113,7 @@ Without `pynacl` everything still works on the built-in pure-Python curve, about
 
 | Step | Double-click | What happens |
 |---|---|---|
-| 1 | `selftest.bat` | 44 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
+| 1 | `selftest.bat` | 45 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
 | 2 | `wallet.bat` | Creates your wallet (two secret keys, one password). Shows your `tvsp...` address and a 55-character RECOVERY CODE: write it on paper, it is the wallet. |
 | 3 | `start_node.bat` | Node + explorer at http://127.0.0.1:8880, mining to your wallet. |
 | 4 | `explorer.bat` | Watch blocks arrive. Payments show as "one of a ring of 48 -> sealed amount -> one-time key". |
@@ -332,7 +332,7 @@ one. Each node checks a payment alone once; blocks, syncing and disk all get che
 | `powcore.py` | The proof-of-work function alone, so mining workers start fast. |
 | `powpool.py` | Mining on several CPU cores with worker processes (Python threads cannot run the tries side by side). |
 | `coin.py` | Command line. |
-| `selftest.py` | 44 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
+| `selftest.py` | 45 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
 | `demo.py` | One private payment as a story. |
 | `testdrive.py` | The public test drive, run for you: two throwaway nodes, a payment each way, the view key, a search of the raw chain, five break-it attempts. Deletes its folders afterwards. |
 | `DECISIONS.md` | Why each choice was made. |
