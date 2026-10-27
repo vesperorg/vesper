@@ -240,6 +240,50 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 - `python coin.py devfund init` creates the fund wallet and writes its address into `config.json`. That changes the genesis block, so do it before the chain starts and back up the wallet file.
 - `python coin.py devfund show` and the explorer show received, unspent and spent totals.
 
+## Mining together: a pool with no operator (planned, not built)
+
+With many miners, one ordinary computer wins a block rarely and at random: at 100 miners like
+it, about once every 50 minutes on average, sometimes hours apart. Miners pool their work to be
+paid steadily. An ordinary pool is a company: it builds every block, holds everyone's payouts and
+learns every member's address, so a handful of pools end up choosing which payments get in and
+are one subpoena from a list of miners. Vesper's pool is decentralized instead, after Monero's
+P2Pool, and it is the only pool the Vesper software will support.
+
+How it is meant to work:
+
+1. **A share chain beside the main chain.** Pool members mine the same Vesper blocks, but a
+   block also counts as a *share* when it meets a much lower target, one share about every 10 s
+   across the pool. Shares form their own small chain, kept by the members' nodes; nobody runs it.
+2. **Every candidate block pays the recent shares.** Each member builds its own block, and its
+   coinbase pays the owners of the last N shares (a window of about N = 2,160, six hours at 10 s),
+   in proportion to the work behind each share. Each member checks the others' shares follow
+   that rule.
+3. **When a share also meets the real difficulty, it is a real Vesper block.** Its coinbase
+   already pays everyone in the window, straight to their own wallets. There is no pool balance,
+   nothing held for anyone, and no operator who could stop paying or run off.
+4. **No addresses on the share chain.** Monero's P2Pool publishes every member's wallet address
+   on its share chain. A Vesper share carries a fresh one-time payout key instead, made by the
+   member's own wallet for that share, so nobody can tell two shares came from the same member.
+5. **Members choose their payments.** Every member builds its own block template, so no pool can
+   leave payments out.
+
+What it needs from the protocol (all of it changes the genesis block, so it is decided before
+mainnet): a coinbase with many outputs (today at most 16; a pool coinbase needs hundreds, each a
+one-time key with a public amount, like every mining reward today), a share format and its
+difficulty rule, and rules for shares that collide (Monero P2Pool counts them as "uncles" at a
+reduced weight so a slow connection is not punished).
+
+What it cannot do: the protocol cannot forbid an ordinary pool. A pool operator only hands out
+block templates, and on the chain the result looks like any block. Proofs of work that stop
+outsourcing exist in research (the finder of a block could take the whole reward, so no operator
+can trust its workers), but they would let a P2Pool member take the whole reward too, and they
+would break P2Pool along with the ordinary pools. So "the only pool" means: built into the node,
+the easiest way to mine together, and the only one Vesper's software, pages and community will
+support.
+
+Order of work: a test pool on the test network first, then the coinbase change, then measured
+results (payout regularity, coinbase size, how much a pool block costs to check) before mainnet.
+
 ## Speed (this PC, libsodium backend, ring size 48)
 
 | Operation | Time |
