@@ -8,7 +8,7 @@ This is the complete picture of Vesper as it stands on 18 October 2026, the day 
 
 ## 1.1 What exists
 
-- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 44-check self-test that passes (node v0.9.0).
+- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 45-check self-test that passes (node v0.9.1).
 - Testnet-1, decided 18 October 2026: a public test network with test coins (tVESP, addresses start `tvsp2`, no value ever), ring size 48 (raised from 32 on 19 October, three times Monero's), a genesis block tied to the newest Bitcoin block at launch, and a seed node on a rented server (kit in `deploy/`).
 - Four privacy layers built and tested: hidden receivers (stealth addresses, as many per wallet as you like, and view keys), hidden amounts (commitments and one range proof per payment), hidden senders (rings of 48 with decoys drawn from measured spending, and key images), and network privacy (a payment travels node to node before any node broadcasts it, with the remaining leak measured by `leaktest.py` rather than claimed away).
 - Payment proofs, wallet recovery codes, Tor through one flag, per-address limits and a peer table built for strangers.
@@ -204,7 +204,7 @@ If you need a number in your own head, July 2027 is the earliest I would call ho
 4. Fund the audit: $30,000 to $100,000 depending on scope. Your own money, a public donation drive for exactly this (the Monero way, every payment public), or a narrowly scoped first audit of the privacy math with a fuller one paid by the fund after launch.
 5. Run `devfund init` before any real genesis so the fund address is in the rules; keep that wallet and your own wallet backed up offline, encrypted, in two places.
 6. Keep the GitHub repository public and current under the Vesper organisation; the commit history is what lets anyone outside trust the code, and it is the proof of who was first.
-7. Keep the seed server current: after each pushed code change, log in and re-run `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` (it re-runs the 44 checks before restarting the node). When there are a few outside node runners, add a second seed on a different provider so the network survives one server dying; it is optional until then.
+7. Keep the seed server current: after each pushed code change, log in and re-run `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` (it re-runs the 45 checks before restarting the node). When there are a few outside node runners, add a second seed on a different provider so the network survives one server dying; it is optional until then.
 8. Mine from block 1 with every machine you can, and disclose it. A line on the launch page that says the founder mines and roughly what share he holds turns the biggest suspicion about new coins into a non-story.
 9. Keep every public sentence about what Vesper does for someone's privacy, never about what it will be worth.
 
