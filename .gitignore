@@ -12,3 +12,4 @@ node_modules/
 *.rings
 _claude_review/
 *.sent
+~$*

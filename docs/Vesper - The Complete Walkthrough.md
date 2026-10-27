@@ -185,7 +185,7 @@ No date is published because none of these has a fixed duration, and a date with
 | Phase 4 and first node hardening | done, 15 October 2026 | leak measured and published; the open internet is still untested |
 | Code public on GitHub | done, 18 October 2026 | the dated public record |
 | Stage two research decision | months; may not be ready for genesis | whether a proof system fits the speed budget |
-| Testnet-1 | launching with the publication, 19 October 2026 | the seed node on a rented server (your step), then node runners and the bounty pool |
+| Testnet-1 | open: code public 19 October 2026, first seed node live 23 October 2026 at http://207.148.85.83:8880 | node runners, the bounty pool, a second seed node on another provider for resilience |
 | Audit | 2 to 4 months once funded and scheduled | funding (see chapter 9), firm availability |
 | Hardened node | months, in parallel with the audit | a developer or two, paid from somewhere |
 | Legal entity and advice | weeks to set up, once started | you, a lawyer, a few thousand dollars |
@@ -203,7 +203,7 @@ If you need a number in your own head, July 2027 is the earliest I would call ho
 4. Fund the audit: $30,000 to $100,000 depending on scope. Your own money, a public donation drive for exactly this (the Monero way, every payment public), or a narrowly scoped first audit of the privacy math with a fuller one paid by the fund after launch.
 5. Run `devfund init` before any real genesis so the fund address is in the rules; keep that wallet and your own wallet backed up offline, encrypted, in two places.
 6. Keep the GitHub repository public and current under the Vesper organisation; the commit history is what lets anyone outside trust the code, and it is the proof of who was first.
-7. Rent the seed server (a small Ubuntu machine, paid in a way that does not point at you), run `deploy/setup-seed.sh` on it as `deploy/README.md` describes, and send back its address so it goes into `config.json` and onto the Join page.
+7. Keep the seed server current: after each pushed code change, log in and re-run `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` (it re-runs the 44 checks before restarting the node). When there are a few outside node runners, add a second seed on a different provider so the network survives one server dying; it is optional until then.
 8. Mine from block 1 with every machine you can, and disclose it. A line on the launch page that says the founder mines and roughly what share he holds turns the biggest suspicion about new coins into a non-story.
 9. Keep every public sentence about what Vesper does for someone's privacy, never about what it will be worth.
 
