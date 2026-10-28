@@ -50,6 +50,13 @@ and a 55-character **recovery code**. Write the code on paper and keep it somewh
 is the wallet. Anyone who sees it can spend your coins; if you lose it and your computer, the coins
 are gone. Nobody can reset it.
 
+Prefer buttons? Double-click **`wallet_app.bat`** instead. It opens the same wallet as a page in
+your browser (served only to your own computer; the address it prints has a one-time key, so
+bookmarks do not work on purpose). Create or restore a wallet, see your balance, make a new address
+for each person who pays you, send with a review step, read your history, make receipts, start and
+stop mining. Everything below also works from there; the terminal commands are shown for the people
+who want to see exactly what happens.
+
 ## 6. Run a node and mine test coins
 
 Double-click **`start_node.bat`** and leave the window open. Your node is now part of the network
@@ -57,7 +64,7 @@ and mines tVESP to your wallet. Double-click **`explorer.bat`** to watch blocks 
 browser: payments show as sealed amounts to one-time keys, and there is no address search because
 there are no addresses on the chain.
 
-Run **`wallet.bat`** again any time to see your balance. A new coin can be spent 10 blocks after
+Run **`wallet.bat`** again any time to see your balance, or leave the wallet app open; it refreshes itself. A new coin can be spent 10 blocks after
 it arrives, about 5 minutes.
 
 Your node finds the rest of testnet-1 through the seed node listed in `config.json`, so within a
@@ -72,7 +79,9 @@ Ask for their address (it starts with `tvsp`), then in the terminal:
 python coin.py send tvsp2THEIRADDRESS 1
 ```
 
-The output tells you what was written to the chain (no address, no amount, no spent coin) and that
+In the wallet app: **Send**, paste the address, type the amount, **Review**, **Send now**.
+
+The terminal's output tells you what was written to the chain (no address, no amount, no spent coin) and that
 your node handed the payment quietly to one peer instead of announcing it. Give each person who pays
 you their own address with `python coin.py wallet new-address --label NAME`; nobody can tell the
 addresses belong together.
@@ -89,8 +98,8 @@ replay a payment, mistype an address, spend with a view key, edit the chain file
 - Ran a node? Open an issue titled **"founding node"** with your handle to be listed on the
   founding-node roll.
 - Found a weakness? Read `SECURITY.md`: open an issue titled "security: contact requested" with no
-  details, and a private channel is arranged from there. Credit is public; bounties are announced
-  with the seed node.
+  details, and a private channel is arranged from there. Credit is public; the bounty pool's amount is not
+  yet set.
 - Something on a page did not match what your computer did? That is a bug in the page or the code,
   and we want to know which. Open an issue.
 

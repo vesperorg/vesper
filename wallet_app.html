@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vesper Wallet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: one card in the middle of the screen, one job per screen, big balance, plain words. Same dusk palette as the Vesper pages, dark-first. */
+  :root {
+    --bg: #0b0a14; --surface: #14122a; --surface2: #1b1836; --line: #2b2850;
+    --fg: #ebe8f7; --muted: #9c98bb; --accent: #f2c66d; --accent2: #8f7cff;
+    --ok: #5fd39a; --warn: #f0975a; --bad: #ff6b6b; --ink-on-accent: #1a1300;
+    --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, "SF Mono", Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+      --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+      --ok: #1f9d63; --warn: #c25c1d; --bad: #c0392b; --ink-on-accent: #fff8ea; color-scheme: light;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f2ea; --surface: #ffffff; --surface2: #f0ebe1; --line: #dcd4c6;
+    --fg: #1b1830; --muted: #5f5a7a; --accent: #a4700a; --accent2: #5542d6;
+    --ok: #1f9d63; --warn: #c25c1d; --bad: #c0392b; --ink-on-accent: #fff8ea; color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.5; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+  header .brand { font-family: var(--display); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  header .brand small { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-left: 8px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); }
+  .pill.on i { background: var(--ok); box-shadow: 0 0 8px var(--ok); } .pill.off i { background: var(--bad); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
+  h1 { font-family: var(--display); font-weight: 600; font-size: 30px; line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.01em; }
+  h2 { font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0 0 8px; }
+  p { margin: 0 0 12px; } .muted { color: var(--muted); } .small { font-size: 14.5px; }
+  label { display: block; font-size: 14px; color: var(--muted); margin: 12px 0 6px; }
+  input, textarea, select { width: 100%; font: inherit; font-size: 17px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface2); color: var(--fg); }
+  input.mono, textarea.mono { font-family: var(--mono); font-size: 14px; }
+  textarea { min-height: 96px; resize: vertical; }
+  input:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  button { font: inherit; font-weight: 600; padding: 12px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface2); color: var(--fg); cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--ink-on-accent); border-color: var(--accent); }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  button.ghost { background: transparent; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .balance { font-family: var(--display); font-size: clamp(40px, 9vw, 56px); font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .balance small { font-family: var(--mono); font-size: 16px; color: var(--muted); margin-left: 8px; font-weight: 400; }
+  .sub { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 16px; }
+  .sub .cell { background: var(--surface2); border-radius: 12px; padding: 12px; }
+  .sub .cell b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .sub .cell span { color: var(--muted); font-size: 13px; }
+  .nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 16px; }
+  .nav button { padding: 14px 10px; }
+  .addr { font-family: var(--mono); font-size: 13px; word-break: break-all; background: var(--surface2); border-radius: 10px; padding: 12px 14px; line-height: 1.5; }
+  .code { font-family: var(--mono); font-size: 20px; letter-spacing: 0.04em; background: var(--surface2); border: 1px dashed var(--accent); border-radius: 12px; padding: 16px; text-align: center; word-break: break-all; line-height: 1.7; }
+  .note { border-left: 3px solid var(--accent); background: var(--surface2); border-radius: 0 10px 10px 0; padding: 12px 14px; margin: 14px 0; font-size: 15px; }
+  .note.warn { border-color: var(--warn); } .note.bad { border-color: var(--bad); } .note.ok { border-color: var(--ok); }
+  .err { color: var(--bad); font-size: 15px; margin-top: 10px; min-height: 1.4em; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; margin-top: 10px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-family: var(--mono); font-size: 11.5px; border: 1px solid var(--line); color: var(--muted); }
+  .tag.ready { color: var(--ok); border-color: var(--ok); } .tag.locked, .tag.waiting { color: var(--accent); border-color: var(--accent); } .tag.spent { opacity: 0.7; }
+  .hidden { display: none !important; }
+  .back { font-size: 14px; color: var(--accent2); cursor: pointer; background: none; border: 0; padding: 0; margin-bottom: 10px; font-weight: 500; }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 22px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Vesper<small id="ticker">wallet</small></div>
+    <div class="pill" id="nodepill"><i></i><span>checking the node</span></div>
+  </header>
+
+  <!-- START: pick, create or restore a wallet -->
+  <section id="s-start" class="card hidden">
+    <h1>Your wallet.</h1>
+    <p class="muted">Test coins only (tVESP): they have no value and never will. The wallet lives in this folder on this computer: <span class="mono" id="datadir"></span>.</p>
+    <div id="walletlist"></div>
+    <div class="row">
+      <button class="primary" onclick="show('create')">Create a new wallet</button>
+      <button onclick="show('restore')">Restore from a recovery code</button>
+    </div>
+  </section>
+
+  <!-- UNLOCK -->
+  <section id="s-unlock" class="card hidden">
+    <button class="back" onclick="show('start')">&larr; other wallets</button>
+    <h2>Unlock <span id="unlock-name"></span></h2>
+    <label>Password</label>
+    <input type="password" id="unlock-pw" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlock()">
+    <div class="err" id="unlock-err"></div>
+    <div class="row"><button class="primary" id="unlock-btn" onclick="unlock()">Unlock</button></div>
+  </section>
+
+  <!-- CREATE -->
+  <section id="s-create" class="card hidden">
+    <button class="back" onclick="show('start')">&larr; back</button>
+    <h2>Create a wallet</h2>
+    <p class="muted small">A wallet is two secret numbers. The password encrypts them on this computer. You will get a recovery code on the next screen: write it on paper.</p>
+    <label>Name for this wallet</label>
+    <input id="create-name" value="default" maxlength="40">
+    <label>Password (at least 8 characters; there is no reset)</label>
+    <input type="password" id="create-pw" autocomplete="new-password">
+    <label>Type it again</label>
+    <input type="password" id="create-pw2" autocomplete="new-password">
+    <div class="err" id="create-err"></div>
+    <div class="row"><button class="primary" id="create-btn" onclick="createWallet()">Create</button></div>
+  </section>
+
+  <!-- RECOVERY CODE (shown once after create) -->
+  <section id="s-code" class="card hidden">
+    <h2>Write this down. Now.</h2>
+    <p class="muted small">These 55 characters are the wallet. With them, you can rebuild it on any computer. Anyone who sees them can spend everything in it. They are shown once; later you can show them again with your password.</p>
+    <div class="code" id="code-text"></div>
+    <div class="note warn">Paper, not a screenshot and not a chat. Letters O and I are never used, so read a round one as zero and a straight one as one.</div>
+    <label style="display:flex;gap:10px;align-items:center;cursor:pointer"><input type="checkbox" id="code-ok" style="width:auto" onchange="document.getElementById('code-btn').disabled=!this.checked"> I have written it down and checked it</label>
+    <div class="row"><button class="primary" id="code-btn" disabled onclick="afterCode()">Open my wallet</button></div>
+  </section>
+
+  <!-- RESTORE -->
+  <section id="s-restore" class="card hidden">
+    <button class="back" onclick="show('start')">&larr; back</button>
+    <h2>Restore a wallet</h2>
+    <p class="muted small">Type the 55-character recovery code. Dashes, spaces and capital letters do not matter.</p>
+    <label>Recovery code</label>
+    <textarea id="restore-code" class="mono" autocomplete="off" spellcheck="false"></textarea>
+    <label>Name for this wallet on this computer</label>
+    <input id="restore-name" value="default" maxlength="40">
+    <label>New password (at least 8 characters)</label>
+    <input type="password" id="restore-pw" autocomplete="new-password">
+    <label>Type it again</label>
+    <input type="password" id="restore-pw2" autocomplete="new-password">
+    <div class="err" id="restore-err"></div>
+    <div class="row"><button class="primary" id="restore-btn" onclick="restoreWallet()">Restore</button></div>
+  </section>
+
+  <!-- HOME -->
+  <section id="s-home" class="hidden">
+    <div class="card">
+      <div class="muted small" id="home-name"></div>
+      <div class="balance" id="home-balance">&nbsp;</div>
+      <div class="muted small" id="home-sub"><span class="spin"></span>reading the chain with your view key</div>
+      <div class="sub">
+        <div class="cell"><b id="home-usable">-</b><span>ready to spend</span></div>
+        <div class="cell"><b id="home-locked">-</b><span>arrived recently, unlocks soon</span></div>
+        <div class="cell"><b id="home-waiting">-</b><span>in a payment being mined</span></div>
+      </div>
+      <div class="nav">
+        <button class="primary" onclick="show('receive')">Receive</button>
+        <button class="primary" onclick="show('send')">Send</button>
+        <button onclick="show('history')">History</button>
+        <button onclick="show('more')">More</button>
+      </div>
+      <div class="err" id="home-err"></div>
+    </div>
+    <div class="card small muted" id="home-mine"></div>
+  </section>
+
+  <!-- RECEIVE -->
+  <section id="s-receive" class="card hidden">
+    <button class="back" onclick="show('home')">&larr; wallet</button>
+    <h2>Receive</h2>
+    <p class="muted small">Your address is safe to share and never appears on the chain. Give each person or shop their own address: nobody can tell your addresses belong together.</p>
+    <div id="addrlist"></div>
+    <label>New address for someone (a name only you see)</label>
+    <input id="newaddr-label" placeholder="for example: Carol, or the bike shop" maxlength="60">
+    <div class="row"><button class="primary" onclick="newAddress()">Make a new address</button></div>
+    <div class="err" id="receive-err"></div>
+  </section>
+
+  <!-- SEND -->
+  <section id="s-send" class="card hidden">
+    <button class="back" onclick="show('home')">&larr; wallet</button>
+    <h2>Send</h2>
+    <div id="send-form">
+      <label>Their address (starts with <span id="send-prefix"></span>, copy and paste it)</label>
+      <textarea id="send-to" class="mono" spellcheck="false" autocomplete="off"></textarea>
+      <label>Amount in <span id="send-ticker"></span></label>
+      <input id="send-amount" inputmode="decimal" placeholder="for example 1.5">
+      <div class="err" id="send-err"></div>
+      <div class="row"><button class="primary" id="send-check" onclick="checkSend()">Review</button></div>
+    </div>
+    <div id="send-review" class="hidden">
+      <div class="note">Sending <b id="rv-amount"></b> to<br><span class="addr" id="rv-to" style="display:block;margin-top:8px"></span></div>
+      <div class="note warn hidden" id="rv-self">That is one of your own addresses. Paying yourself only costs the fee.</div>
+      <p class="muted small">The fee is the fixed minimum for a payment of this size, the same for everyone; it is shown after sending. On the chain this payment shows no address, no amount and no spent coin, and your node hands it to one peer instead of announcing it.</p>
+      <div class="err" id="send-err2"></div>
+      <div class="row"><button class="primary" id="send-go" onclick="doSend()">Send now</button><button class="ghost" onclick="backToForm()">Change something</button></div>
+    </div>
+    <div id="send-done" class="hidden">
+      <div class="note ok"><b>Sent.</b> <span id="done-text"></span></div>
+      <div class="addr" id="done-txid"></div>
+      <p class="muted small" id="done-relay" style="margin-top:10px"></p>
+      <div class="row"><button class="primary" onclick="show('home')">Back to the wallet</button><button class="ghost" onclick="copyText(document.getElementById('done-txid').textContent)">Copy transaction ID</button></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="s-history" class="card hidden">
+    <button class="back" onclick="show('home')">&larr; wallet</button>
+    <h2>History</h2>
+    <p class="muted small">Only your own wallet can see this. Incoming coins come from your view key reading the chain; payments you made are kept, encrypted, by this wallet so it can prove them later.</p>
+    <h3 style="margin:16px 0 4px;font-size:16px">Payments you made</h3>
+    <div id="hist-out"></div>
+    <h3 style="margin:16px 0 4px;font-size:16px">Coins that came in</h3>
+    <div id="hist-in"></div>
+  </section>
+
+  <!-- MORE -->
+  <section id="s-more" class="card hidden">
+    <button class="back" onclick="show('home')">&larr; wallet</button>
+    <h2>More</h2>
+    <div class="row">
+      <button onclick="show('receipt')">Receipts and proofs</button>
+      <button onclick="downloadViewKey()">Download a view key for your accountant</button>
+      <button onclick="show('recovery')">Show my recovery code</button>
+      <button class="danger" onclick="lockWallet()">Lock the wallet</button>
+    </div>
+    <div class="note small" style="margin-top:18px"><b>Mining to this wallet.</b> <span id="mine-text">Your node can mine test coins to this wallet.</span><div class="row"><button id="mine-btn" onclick="toggleMine()">Start mining</button></div></div>
+    <div class="err" id="more-err"></div>
+    <p class="muted small" style="margin-top:14px">Node: <span class="mono" id="more-node"></span></p>
+  </section>
+
+  <!-- RECEIPTS -->
+  <section id="s-receipt" class="card hidden">
+    <button class="back" onclick="show('more')">&larr; more</button>
+    <h2>Receipts and proofs</h2>
+    <p class="muted small">A receipt proves to one person that one payment went to one address, and how much. Nothing else about you is in it. The shop checks it against its own node.</p>
+    <label>Transaction ID of a payment you made (from History)</label>
+    <input id="proof-txid" class="mono" spellcheck="false">
+    <div class="row"><button class="primary" onclick="makeProof('pay')">Make a receipt as the payer</button><button onclick="makeProof('receive')">...as the receiver</button></div>
+    <div class="err" id="proof-err"></div>
+    <div id="proof-out" class="hidden"><div class="note ok">Receipt made. Download it and give it only to the person who needs it.</div><div class="row"><button class="primary" onclick="downloadProofs()">Download the receipt</button></div></div>
+    <h3 style="margin:22px 0 6px;font-size:16px">Check a receipt someone gave you</h3>
+    <textarea id="check-text" class="mono" placeholder="paste the receipt file's contents here" spellcheck="false"></textarea>
+    <div class="row"><button onclick="checkProof()">Check it</button></div>
+    <div id="check-out" class="small" style="margin-top:10px"></div>
+  </section>
+
+  <!-- RECOVERY -->
+  <section id="s-recovery" class="card hidden">
+    <button class="back" onclick="show('more')">&larr; more</button>
+    <h2>Recovery code</h2>
+    <p class="muted small">Your password again, please. Anyone who sees the code can spend everything in this wallet.</p>
+    <label>Password</label>
+    <input type="password" id="rec-pw" autocomplete="current-password">
+    <div class="err" id="rec-err"></div>
+    <div class="row"><button class="primary" onclick="showRecovery()">Show it</button></div>
+    <div class="code hidden" id="rec-code" style="margin-top:14px"></div>
+  </section>
+
+  <footer>Vesper wallet app &middot; this computer only &middot; <span id="footver"></span></footer>
+</div>
+
+<script>
+(function () {
+  var TOKEN = new URLSearchParams(location.search).get("t") || "";
+  var state = { ticker: "tVESP", prefix: "tvsp", node: null, open: null, wallets: [], decimals: 8, proofs: null, mining: false };
+  var pendingUnlock = null, pollTimer = null;
+
+  function $(id) { return document.getElementById(id); }
+  function err(id, msg) { $(id).textContent = msg || ""; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function busy(id, on) { var b = $(id); if (b) { b.disabled = on; } }
+  function copyText(t) { if (navigator.clipboard) navigator.clipboard.writeText(t); }
+  window.copyText = copyText;
+
+  async function api(method, path, body) {
+    var opts = { method: method, headers: { "X-App-Token": TOKEN } };
+    if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    var r = await fetch(path, opts);
+    var d = {};
+    try { d = await r.json(); } catch (e) { d = { error: "the wallet program did not answer" }; }
+    if (!r.ok) throw new Error(d.error || ("error " + r.status));
+    return d;
+  }
+
+  var screens = ["start","unlock","create","code","restore","home","receive","send","history","more","receipt","recovery"];
+  function show(name) {
+    screens.forEach(function (s) { $("s-" + s).classList.toggle("hidden", s !== name); });
+    clearInterval(pollTimer);
+    if (name === "home") { loadBalance(); pollTimer = setInterval(loadBalance, 30000); }
+    if (name === "receive") loadAddresses();
+    if (name === "history") loadHistory();
+    if (name === "send") { $("send-prefix").textContent = state.prefix; $("send-ticker").textContent = state.ticker; backToForm(); }
+    if (name === "more") { $("more-node").textContent = state.node ? state.node.url : "?"; refreshMine(); }
+    if (name === "recovery") { $("rec-code").classList.add("hidden"); $("rec-pw").value = ""; err("rec-err", ""); }
+    if (name === "receipt") { $("proof-out").classList.add("hidden"); $("check-out").textContent = ""; }
+  }
+  window.show = show;
+
+  function nodePill() {
+    var n = state.node, p = $("nodepill");
+    if (!n) return;
+    if (n.reachable) {
+      p.className = "pill on";
+      p.querySelector("span").textContent = (n.network || "node") + " · block " + (n.height || 0) + " · " + (n.peers || 0) + " peer" + (n.peers === 1 ? "" : "s") + (n.miner_running ? " · mining" : "");
+    } else {
+      p.className = "pill off";
+      p.querySelector("span").textContent = "node not running: start it with start_node.bat";
+    }
+  }
+
+  async function loadState() {
+    var d = await api("GET", "/app/state");
+    state.ticker = d.ticker; state.prefix = d.prefix; state.decimals = d.decimals; state.node = d.node; state.open = d.open; state.wallets = d.wallets;
+    $("ticker").textContent = d.ticker + " · " + (d.node && d.node.network ? d.node.network : "wallet");
+    $("datadir").textContent = d.data_dir;
+    $("footver").textContent = "app " + d.app_version;
+    nodePill();
+    var list = $("walletlist"), html = "";
+    d.wallets.forEach(function (w) {
+      if (w.unreadable) { html += '<div class="note bad small">' + esc(w.name) + ": this wallet file cannot be read.</div>"; return; }
+      html += '<div class="note" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>' + esc(w.name) + '</b><div class="muted small mono">' + esc(w.address.slice(0, 22)) + '…' + (w.encrypted ? "" : " · UNENCRYPTED") + '</div></div><button class="primary" data-name="' + esc(w.name) + '">Open</button></div>';
+    });
+    if (!d.wallets.length) html = '<p class="muted">No wallet on this computer yet.</p>';
+    list.innerHTML = html;
+    list.querySelectorAll("button[data-name]").forEach(function (b) { b.onclick = function () { pendingUnlock = b.getAttribute("data-name"); $("unlock-name").textContent = pendingUnlock; $("unlock-pw").value = ""; err("unlock-err", ""); show("unlock"); setTimeout(function () { $("unlock-pw").focus(); }, 50); }; });
+    if (d.open) { $("home-name").textContent = "wallet “" + d.open + "”"; show("home"); } else show("start");
+  }
+
+  async function unlock() {
+    err("unlock-err", ""); busy("unlock-btn", true);
+    try {
+      var d = await api("POST", "/app/unlock", { name: pendingUnlock, password: $("unlock-pw").value });
+      state.open = d.name; $("home-name").textContent = "wallet “" + d.name + "”"; $("unlock-pw").value = "";
+      show("home");
+    } catch (e) { err("unlock-err", e.message); }
+    busy("unlock-btn", false);
+  }
+  window.unlock = unlock;
+
+  async function createWallet() {
+    err("create-err", ""); busy("create-btn", true);
+    try {
+      var d = await api("POST", "/app/wallet/create", { name: $("create-name").value, password: $("create-pw").value, confirm: $("create-pw2").value });
+      state.open = d.name; $("home-name").textContent = "wallet “" + d.name + "”";
+      $("code-text").textContent = d.recovery_code; $("code-ok").checked = false; $("code-btn").disabled = true;
+      $("create-pw").value = ""; $("create-pw2").value = "";
+      show("code");
+    } catch (e) { err("create-err", e.message); }
+    busy("create-btn", false);
+  }
+  window.createWallet = createWallet;
+  window.afterCode = function () { $("code-text").textContent = ""; show("home"); };
+
+  async function restoreWallet() {
+    err("restore-err", ""); busy("restore-btn", true);
+    try {
+      var d = await api("POST", "/app/wallet/restore", { name: $("restore-name").value, code: $("restore-code").value, password: $("restore-pw").value, confirm: $("restore-pw2").value });
+      state.open = d.name; $("home-name").textContent = "wallet “" + d.name + "”";
+      $("restore-code").value = ""; $("restore-pw").value = ""; $("restore-pw2").value = "";
+      show("home");
+    } catch (e) { err("restore-err", e.message); }
+    busy("restore-btn", false);
+  }
+  window.restoreWallet = restoreWallet;
+
+  async function loadBalance() {
+    err("home-err", "");
+    $("home-sub").innerHTML = '<span class="spin"></span>reading the chain with your view key';
+    try {
+      var d = await api("GET", "/app/balance");
+      $("home-balance").innerHTML = esc(d.balance.replace(" " + state.ticker, "")) + "<small>" + esc(state.ticker) + "</small>";
+      $("home-usable").textContent = d.usable; $("home-locked").textContent = d.locked; $("home-waiting").textContent = d.waiting;
+      $("home-sub").textContent = d.counts.unspent + " coin" + (d.counts.unspent === 1 ? "" : "s") + " of yours among " + d.chain_outputs + " on the chain, block " + d.height + (d.counts.spent ? "; " + d.spent_total + " spent so far" : "") + (d.scanned ? "; " + d.scanned + " new block" + (d.scanned === 1 ? "" : "s") + " read" : "");
+      var st = await api("GET", "/app/state"); state.node = st.node; nodePill();
+      var m = await api("POST", "/app/mine", { action: "status" });
+      $("home-mine").textContent = mineText(m, true);
+    } catch (e) {
+      $("home-sub").textContent = ""; err("home-err", e.message);
+      if (/no wallet is open|locked itself/.test(e.message)) { setTimeout(loadState, 1200); }
+    }
+  }
+
+  async function loadAddresses() {
+    err("receive-err", "");
+    try {
+      var d = await api("GET", "/app/addresses"), html = "";
+      d.addresses.forEach(function (a) {
+        html += '<div style="margin-bottom:12px"><div class="muted small">' + (a.number === 0 ? "Main address" : "Address #" + a.number + (a.label ? " · " + esc(a.label) : "")) + '</div><div class="addr">' + esc(a.address) + '</div><div class="row" style="margin-top:6px"><button class="ghost" data-copy="' + esc(a.address) + '">Copy</button></div></div>';
+      });
+      $("addrlist").innerHTML = html;
+      $("addrlist").querySelectorAll("button[data-copy]").forEach(function (b) { b.onclick = function () { copyText(b.getAttribute("data-copy")); b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); }; });
+    } catch (e) { err("receive-err", e.message); }
+  }
+  window.newAddress = async function () {
+    err("receive-err", "");
+    try { await api("POST", "/app/addresses/new", { label: $("newaddr-label").value }); $("newaddr-label").value = ""; loadAddresses(); }
+    catch (e) { err("receive-err", e.message); }
+  };
+
+  function backToForm() { $("send-form").classList.remove("hidden"); $("send-review").classList.add("hidden"); $("send-done").classList.add("hidden"); err("send-err", ""); err("send-err2", ""); }
+  window.backToForm = backToForm;
+  window.checkSend = async function () {
+    err("send-err", ""); busy("send-check", true);
+    try {
+      var d = await api("POST", "/app/send/check", { to: $("send-to").value, amount: $("send-amount").value });
+      $("rv-amount").textContent = d.amount; $("rv-to").textContent = d.to; $("rv-self").classList.toggle("hidden", !d.own_address);
+      $("send-form").classList.add("hidden"); $("send-review").classList.remove("hidden");
+    } catch (e) { err("send-err", e.message); }
+    busy("send-check", false);
+  };
+  window.doSend = async function () {
+    err("send-err2", ""); busy("send-go", true); $("send-go").textContent = "Sealing, proving and signing…";
+    try {
+      var d = await api("POST", "/app/send", { to: $("send-to").value, amount: $("send-amount").value, allow_self: !$("rv-self").classList.contains("hidden") });
+      $("done-text").textContent = d.amount + " to " + d.to.slice(0, 14) + "… with a fee of " + d.fee + ". Built in " + d.seconds + " s: " + d.inputs + " input" + (d.inputs === 1 ? "" : "s") + " hidden in rings of " + d.ring_size + ", " + d.outputs + " sealed outputs.";
+      $("done-txid").textContent = d.txid;
+      $("done-relay").textContent = d.relay === "stem" ? "Your node handed it quietly to one peer; another node, usually several hops away, announces it. The first broadcast does not come from your computer." : (d.relay === "fluff" ? "Your node had no peers to pass it through, so it announced the payment itself; anyone listening could see it came from this computer." : "");
+      if (d.mixed_addresses && d.mixed_addresses.length) $("done-relay").textContent += " Note: no single address of yours held enough, so coins that came to addresses " + d.mixed_addresses.map(function (a) { return "#" + a; }).join(", ") + " were spent together.";
+      $("send-to").value = ""; $("send-amount").value = "";
+      $("send-review").classList.add("hidden"); $("send-done").classList.remove("hidden");
+    } catch (e) { err("send-err2", e.message); }
+    busy("send-go", false); $("send-go").textContent = "Send now";
+  };
+
+  async function loadHistory() {
+    $("hist-out").innerHTML = '<p class="muted small"><span class="spin"></span>loading</p>'; $("hist-in").innerHTML = "";
+    try {
+      var d = await api("GET", "/app/history"), out = "", inn = "";
+      if (!d.outgoing.length) out = '<p class="muted small">None yet.</p>';
+      else { out = "<table><tr><th>Amount</th><th>To</th><th>Transaction</th></tr>"; d.outgoing.forEach(function (p) { p.to.forEach(function (t) { out += '<tr><td class="num">' + esc(t.amount) + '</td><td class="mono">' + esc(t.address.slice(0, 18)) + '…</td><td class="mono">' + esc(p.txid.slice(0, 16)) + '…</td></tr>'; }); }); out += "</table>"; }
+      if (!d.incoming.length) inn = '<p class="muted small">None yet. Mine some test coins, or ask someone to pay you.</p>';
+      else { inn = "<table><tr><th>Amount</th><th>Kind</th><th>Status</th><th>To address</th></tr>"; d.incoming.forEach(function (u) { inn += '<tr><td class="num">' + esc(u.amount) + '</td><td>' + esc(u.kind) + '</td><td><span class="tag ' + esc(u.status) + '">' + esc(u.status) + '</span></td><td>' + (u.address ? "#" + u.address : "main") + '</td></tr>'; }); inn += "</table>"; }
+      $("hist-out").innerHTML = out; $("hist-in").innerHTML = inn;
+    } catch (e) { $("hist-out").innerHTML = '<div class="err">' + esc(e.message) + '</div>'; }
+  }
+
+  window.lockWallet = async function () { try { await api("POST", "/app/lock", {}); } catch (e) {} state.open = null; loadState(); };
+  window.downloadViewKey = async function () {
+    err("more-err", "");
+    try { var d = await api("GET", "/app/viewkey"); download((state.open || "wallet") + ".viewkey.json", JSON.stringify(d.file, null, 2)); if (!d.with_markers) err("more-err", "Downloaded. Open the wallet's balance once first if you want the file to also show which coins are spent."); }
+    catch (e) { err("more-err", e.message); }
+  };
+  function download(name, text) { var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+
+  window.showRecovery = async function () {
+    err("rec-err", "");
+    try { var d = await api("POST", "/app/recovery", { password: $("rec-pw").value }); $("rec-code").textContent = d.recovery_code; $("rec-code").classList.remove("hidden"); $("rec-pw").value = ""; }
+    catch (e) { err("rec-err", e.message); }
+  };
+
+  function mineText(d, home) {
+    if (!d.running) return home ? "Your node is not mining. Turn it on under More to earn test coins." : "Your node can mine test coins to this wallet. It uses half your processor cores while it runs.";
+    var found = d.blocks_found + " block" + (d.blocks_found === 1 ? "" : "s") + " found since the node started";
+    if (d.to_this_wallet) return "Your node is mining to this wallet: " + d.hashrate + " tries a second, " + found + (home ? "." : ". Mining uses your processor; stop it when you need the computer.");
+    return "Your node is mining, but to another wallet (" + d.miner_address_start + "\u2026): " + d.hashrate + " tries a second, " + found + ". " + (home ? "Under More you can point it at this wallet." : "Start mining here to point it at this wallet instead.");
+  }
+  async function refreshMine() {
+    try { var d = await api("POST", "/app/mine", { action: "status" }); state.mining = d.running && d.to_this_wallet; $("mine-btn").textContent = state.mining ? "Stop mining" : (d.running ? "Mine to this wallet instead" : "Start mining"); $("mine-text").textContent = mineText(d, false); }
+    catch (e) { $("mine-text").textContent = e.message; }
+  }
+  window.toggleMine = async function () { err("more-err", ""); try { await api("POST", "/app/mine", { action: state.mining ? "stop" : "start" }); refreshMine(); } catch (e) { err("more-err", e.message); } };
+
+  window.makeProof = async function (kind) {
+    err("proof-err", ""); $("proof-out").classList.add("hidden");
+    try { var d = await api("POST", "/app/proof/" + kind, { txid: $("proof-txid").value }); state.proofs = d.proofs; $("proof-out").classList.remove("hidden"); }
+    catch (e) { err("proof-err", e.message); }
+  };
+  window.downloadProofs = function () { if (!state.proofs) return; state.proofs.forEach(function (p, i) { download((p.txid || "payment").slice(0, 12) + "-receipt-" + i + ".json", JSON.stringify(p, null, 2)); }); };
+  window.checkProof = async function () {
+    $("check-out").textContent = "";
+    try { var d = await api("POST", "/app/proof/check", { proof: $("check-text").value }); $("check-out").innerHTML = '<div class="note ok"><b>The receipt holds.</b> ' + esc(d.amount) + ' was paid to<br><span class="mono">' + esc(d.address) + '</span><br>' + (d.block !== null && d.block !== undefined ? "in block " + d.block + ", " + d.confirmations + " confirmation" + (d.confirmations === 1 ? "" : "s") : "not mined yet") + "; made by the " + esc(d.made_by) + ".</div>"; }
+    catch (e) { $("check-out").innerHTML = '<div class="note bad">' + esc(e.message) + '</div>'; }
+  };
+
+  if (!TOKEN) { document.body.innerHTML = '<div class="wrap"><div class="card"><h2>Open the wallet from its window</h2><p class="muted">The address printed by wallet_app.bat includes a one-time key. Bookmarks do not work on purpose.</p></div></div>'; }
+  else loadState().catch(function (e) { $("nodepill").className = "pill off"; $("nodepill").querySelector("span").textContent = e.message; show("start"); });
+})();
+</script>
+</body>
+</html>
