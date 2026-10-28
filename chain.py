@@ -160,6 +160,8 @@ def deep_merge(base: dict, override: dict) -> dict:
 
 
 def load_config(path: str | None = None) -> dict:
+    if path and not os.path.exists(path):         # named on purpose: never fall back to another coin's rules
+        raise ChainError("no config file at %s" % path)
     path = path or os.path.join(HERE, "config.json")
     user = {}
     if os.path.exists(path):

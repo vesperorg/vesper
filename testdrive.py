@@ -167,7 +167,7 @@ class Drive:
         print("STEP 1  Alice has coins")
         self.coin("info", **A)
         print("\nSTEP 2  Alice pays Bob 12.5 %s" % T)
-        out = self.coin("send", bob, "12.5", "--password", ALICE_PW, show="send vespBOB... 12.5", **A)
+        out = self.coin("send", bob, "12.5", "--password", ALICE_PW, show="send %sBOB... 12.5" % PFX, **A)
         txid = next((l.split()[1] for l in out.splitlines() if l.startswith("txid ")), "")
         self.check(bool(txid), "the payment was accepted")
         self.wait("the payment to be mined", lambda: self.mined(self.url_b, txid))
@@ -191,7 +191,7 @@ class Drive:
         print("\nSTEP 7  Bob pays 3 back - once his coin is 10 blocks old")
         height = get(self.url_b + "/api/tx/" + txid)["block"]
         self.wait("Bob's coin to be 10 blocks old", lambda: self.info(self.url_b)["height"] >= height + 9)
-        out = self.coin("send", alice, "3", "--password", BOB_PW, show="send vespALICE... 3", **B)
+        out = self.coin("send", alice, "3", "--password", BOB_PW, show="send %sALICE... 3" % PFX, **B)
         txid2 = next((l.split()[1] for l in out.splitlines() if l.startswith("txid ")), "")
         self.check("passed it quietly to ONE peer" in out, "Bob's node passed it quietly to one peer instead of broadcasting it")
         self.wait("Bob's payment to be mined", lambda: self.mined(self.url_a, txid2))
@@ -203,14 +203,14 @@ class Drive:
         self.check("Chain OK" in out, "every block, signature, proof and sum re-verified")
 
         print("\nNOW TRY TO BREAK IT")
-        out = self.coin("send", alice, "50", "--password", BOB_PW, show="send vespALICE... 50   (Bob holds 9.49999)", **B)
+        out = self.coin("send", alice, "50", "--password", BOB_PW, show="send %sALICE... 50   (Bob holds 9.49999)" % PFX, **B)
         self.check("insufficient funds" in out, "spending more than you have is refused")
         tx = get(self.url_a + "/api/tx/" + txid)["tx"]
         answer = post(self.url_a + "/api/tx", tx)
         print("  > post the confirmed payment again\n    %s" % answer)
         self.check("already in the chain" in str(answer.get("error")), "replaying a payment is refused")
         bad = alice[:40] + ("X" if alice[40] != "X" else "Y") + alice[41:]
-        out = self.coin("send", bad, "1", "--password", BOB_PW, show="send vesp...(one character changed)... 1", **B)
+        out = self.coin("send", bad, "1", "--password", BOB_PW, show="send %s...(one character changed)... 1" % PFX, **B)
         self.check("not a valid %s address" % T in out, "a mistyped address is caught by its checksum")
         spare = os.path.join(self.dir_b, "wallets", "spare.json")
         shutil.copy(os.path.join(self.dir_b, "wallets", "default.viewkey.json"), spare)
@@ -259,7 +259,7 @@ class Drive:
         print("\nMORE 1  Bob gives Carol an address of her own; Alice pays it")
         out = self.coin("wallet", "new-address", "--label", "carol", "--password", BOB_PW, **B)
         for_carol = next(line.strip() for line in out.splitlines() if line.strip().startswith(PFX))
-        out = self.coin("send", for_carol, "2", "--password", ALICE_PW, show="send vespCAROL... 2", **A)
+        out = self.coin("send", for_carol, "2", "--password", ALICE_PW, show="send %sCAROL... 2" % PFX, **A)
         txid = next((l.split()[1] for l in out.splitlines() if l.startswith("txid ")), "")
         self.wait("the payment to Carol's address to be mined", lambda: self.mined(self.url_b, txid))
         out = self.coin("wallet", "show", "--password", BOB_PW, **B)

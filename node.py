@@ -42,6 +42,7 @@ from urllib.parse import parse_qs, urlparse
 
 from chain import (BLOCK_KEYS, HERE, MAX_LOOKUP, Blockchain, ChainError, compute_block_hash, disable_windows_power_throttling,
                    load_config, lock_data_dir, resolve_data_dir)
+import socket
 import socksproxy
 from powpool import PowPool, default_processes
 from privacy import is_valid_address
@@ -1234,7 +1235,11 @@ def main(argv=None) -> None:
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    config = load_config(args.config)
+    try:
+        config = load_config(args.config)
+    except ChainError as exc:
+        print(exc)
+        sys.exit(2)
     if args.processes:
         config["mining"]["processes"] = max(1, args.processes)
     if args.proxy:
@@ -1245,6 +1250,14 @@ def main(argv=None) -> None:
         except ValueError as exc:
             print("--proxy: %s" % exc)
             sys.exit(2)
+        proxy_host, proxy_port, _ = socksproxy.parse_proxy(config["network"]["proxy"])
+        try:
+            socket.create_connection((proxy_host, proxy_port), timeout=5).close()
+        except OSError:
+            print("Nothing is listening at the proxy %s. Is Tor running? Open the Tor Browser and connect "
+                  "(it listens on 9150), or start the Tor service (9050), then start the node again."
+                  % config["network"]["proxy"])
+            sys.exit(1)
     host = args.host or config["network"]["host"]
     port = args.port or int(config["network"]["port"])
     data_dir = resolve_data_dir(config, args.data_dir)

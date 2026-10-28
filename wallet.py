@@ -54,8 +54,12 @@ def recovery_code(seed: bytes) -> str:
 def seed_from_code(code: str) -> bytes:
     """The seed in a recovery code.  Spaces, dashes and case do not matter; a mistake is caught."""
     text = "".join(ch for ch in str(code).upper() if ch not in " -\t\r\n").translate(str.maketrans("OIL", "011"))
-    if len(text) != _CODE_LENGTH or any(ch not in _CODE_ALPHABET for ch in text):
-        raise WalletError("a recovery code is %d letters and digits (11 groups of 5); this one is not" % _CODE_LENGTH)
+    if len(text) != _CODE_LENGTH:
+        raise WalletError("a recovery code is %d letters and digits (11 groups of 5); this one has %d" % (_CODE_LENGTH, len(text)))
+    wrong = sorted({ch for ch in text if ch not in _CODE_ALPHABET})
+    if wrong:
+        raise WalletError("a recovery code never uses %s; look at that letter again (U is never used, "
+                          "O and I are read as 0 and 1)" % ", ".join(repr(ch) for ch in wrong))
     n = 0
     for ch in text:
         n = n * 32 + _CODE_ALPHABET.index(ch)

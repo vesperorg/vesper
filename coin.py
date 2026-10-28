@@ -5,8 +5,14 @@ coin.py - the Vesper command line: wallets, sending, mining, looking things up.
   python coin.py wallet show                  address + balance (scans the chain with your keys)
   python coin.py wallet list
   python coin.py wallet export-view [--out F] write a view-key file: can SEE payments, cannot spend
+  python coin.py wallet new-address --label X one more address for one payer; nobody can link them
+  python coin.py wallet addresses             your addresses
+  python coin.py wallet recovery-code         show the 55-character recovery code again
+  python coin.py wallet restore [--name N]    rebuild a wallet from its recovery code
   python coin.py watch VIEWKEY.json           balance and outputs using only a view key
   python coin.py send ADDRESS AMOUNT [--fee]  pay someone (change comes back to you, unlinkably)
+  python coin.py proof pay|receive TXID       prove one payment to one person;  proof check FILE
+  --node URL, --proxy socks5h://127.0.0.1:9150, --data-dir D, --config F   work before or after the command
   python coin.py mine start|stop|status|once
   python coin.py devfund init|show            the development fund (off until you run init)
   python coin.py info | chain | block N|HASH | tx TXID | peers [add URL] | validate
@@ -24,6 +30,7 @@ import getpass
 import glob
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -51,6 +58,7 @@ class Ctx:
         self.data_dir = resolve_data_dir(self.config, args.data_dir)
         net = self.config["network"]
         self.node_url = (args.node or "http://%s:%d" % (net["host"], int(net["port"]))).rstrip("/")
+        self.proxy = getattr(args, "proxy", None)
         try:
             self.opener = socksproxy.opener(getattr(args, "proxy", None))   # a node elsewhere, reached through Tor
         except ValueError as exc:
@@ -60,7 +68,18 @@ class Ctx:
         return format_units(units, self.decimals, self.ticker)
 
     def wallet_path(self, name: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,39}", name or ""):
+            raise CliError("a wallet name is 1 to 40 letters, digits, '_', '-' or '.', for example:  --name savings")
         return os.path.join(self.data_dir, "wallets", "%s.json" % name)
+
+    def wallet_info(self, name: str) -> dict:
+        """Address and status of a wallet file, or a plain error if the file is damaged."""
+        path = self.wallet_path(name)
+        try:
+            return Wallet.public_info(path, self.prefix)
+        except (OSError, ValueError, KeyError) as exc:
+            raise CliError("the wallet file %s cannot be read (%s). If it is damaged, rebuild the wallet from its "
+                           "recovery code:  python coin.py wallet restore --name %s-restored" % (shown(path), exc, name))
 
     def api(self, method: str, path: str, payload=None, timeout=60):
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
@@ -76,11 +95,17 @@ class Ctx:
                 message = str(exc)
             raise CliError("node said: %s" % message)
         except urllib.error.URLError as exc:
-            raise CliError("cannot reach the node at %s (%s). Start it with start_node.bat first." % (self.node_url, exc.reason))
-        except OSError as exc:                          # the proxy, if one is used, said no
-            raise CliError("cannot reach the node at %s (%s)" % (self.node_url, exc))
+            raise CliError(self._unreachable(exc.reason))
         except TimeoutError:
-            raise CliError("the node did not answer in time")
+            raise CliError("the node at %s did not answer in time" % self.node_url)
+        except OSError as exc:                          # the proxy, if one is used, said no
+            raise CliError(self._unreachable(exc))
+
+    def _unreachable(self, reason) -> str:
+        if self.proxy:
+            return ("cannot reach the node at %s through the proxy %s (%s). Is Tor running? The Tor Browser listens "
+                    "on 9150, the Tor service on 9050." % (self.node_url, self.proxy, reason))
+        return "cannot reach the node at %s (%s). Start it with start_node.bat first." % (self.node_url, reason)
 
     def scan_page(self, start: int) -> dict:
         """The outputs and spent markers of blocks start, start+1, ...  Whole blocks, always:
@@ -152,28 +177,39 @@ def short(text: str, n: int = 16) -> str:
 
 def prompt_new_password() -> str:
     while True:
-        first = getpass.getpass("Choose a wallet password (leave empty for NO encryption): ")
+        first = getpass.getpass("Choose a wallet password (it does not show as you type): ")
         if not first:
-            return ""
+            answer = input("No password means anyone who can open this computer can spend the coins. "
+                           "Type NONE to save it unencrypted, or press Enter to choose a password: ")
+            if answer.strip().upper() == "NONE":
+                return ""
+            continue
         if first == getpass.getpass("Type it again: "):
             return first
         print("They did not match - try again.")
 
 
 def load_wallet(ctx: Ctx, name: str, password: str | None) -> Wallet:
+    return open_wallet(ctx, name, password)[0]
+
+
+def open_wallet(ctx: Ctx, name: str, password: str | None) -> tuple[Wallet, str | None]:
+    """(the wallet, the password that opened it).  Three tries when the password is asked for."""
     path = ctx.wallet_path(name)
     if not os.path.exists(path):
         raise CliError("no wallet named %r - create one with:  python coin.py wallet new --name %s" % (name, name))
-    if not Wallet.public_info(path, ctx.prefix)["encrypted"]:
-        return Wallet.load(path, prefix=ctx.prefix)
+    if not ctx.wallet_info(name)["encrypted"]:
+        return Wallet.load(path, prefix=ctx.prefix), None
     for _ in range(3):
         pw = password or getpass.getpass("Password for wallet %r: " % name)
         try:
-            return Wallet.load(path, pw, ctx.prefix)
+            return Wallet.load(path, pw, ctx.prefix), pw
         except WalletLocked as exc:
             if password:
                 raise CliError(str(exc))
             print(str(exc))
+        except (ValueError, KeyError) as exc:
+            raise CliError("the wallet file %s cannot be read (%s)" % (shown(path), exc))
     raise CliError("too many wrong passwords")
 
 
@@ -255,23 +291,28 @@ def cmd_wallet_recovery_code(ctx: Ctx, args) -> None:
 def cmd_wallet_show(ctx: Ctx, args) -> None:
     path = ctx.wallet_path(args.name)
     if not os.path.exists(path):
+        others = sorted(os.path.splitext(os.path.basename(p))[0] for p in glob.glob(os.path.join(ctx.data_dir, "wallets", "*.json"))
+                        if not p.endswith(".viewkey.json"))
+        if args.name != "default" and others:
+            raise CliError("no wallet named %r. Your wallets: %s" % (args.name, ", ".join(others)))
         print("No wallet named %r yet - creating one." % args.name)
         print("")
         cmd_wallet_new(ctx, args)
         return
-    info = Wallet.public_info(path, ctx.prefix)
+    info = ctx.wallet_info(args.name)
     print("Wallet  : %s" % args.name)
     print("Address : %s" % info["address"])
     print("File    : %s  (%s)" % (shown(path), "encrypted" if info["encrypted"] else "UNENCRYPTED"))
     try:
-        wallet = load_wallet(ctx, args.name, args.password)
-        if wallet.labels:
-            print("Also    : %d more address(es) of this wallet - list them with:  python coin.py wallet addresses" % len(wallet.labels))
-        started = time.time()
-        owned, tip = ctx.sync(wallet, args.name)
+        ctx.api("GET", "/api/info", timeout=30)    # is the node there? Ask before the password, not after
     except CliError as exc:
         print("Balance : (%s)" % exc)
         return
+    wallet = load_wallet(ctx, args.name, args.password)
+    if wallet.labels:
+        print("Also    : %d more address(es) of this wallet - list them with:  python coin.py wallet addresses" % len(wallet.labels))
+    started = time.time()
+    owned, tip = ctx.sync(wallet, args.name)
     print_owned(ctx, owned, tip, started)
     waiting = waiting_refs(tip)
     busy = [u for u in owned if not u["spent"] and is_waiting(u, waiting)]
@@ -281,10 +322,7 @@ def cmd_wallet_show(ctx: Ctx, args) -> None:
 
 def cmd_wallet_new_address(ctx: Ctx, args) -> None:
     path = ctx.wallet_path(args.name)
-    password = args.password
-    if os.path.exists(path) and Wallet.public_info(path, ctx.prefix)["encrypted"] and not password:
-        password = getpass.getpass("Password for wallet %r: " % args.name)      # needed twice: to open and to save
-    wallet = load_wallet(ctx, args.name, password)
+    wallet, password = open_wallet(ctx, args.name, args.password)      # the password is needed again to save
     number, address = wallet.new_address(args.label or "")
     wallet.save(path, password or None)
     print("Address #%d%s:" % (number, " (%s)" % args.label if args.label else ""))
@@ -323,7 +361,10 @@ def cmd_wallet_export_view(ctx: Ctx, args) -> None:
         owned, _ = ctx.sync(wallet, args.name)
     except CliError:
         pass                                   # node offline: export the key without spent markers
-    wallet.export_view_key(out, owned)
+    try:
+        wallet.export_view_key(out, owned)
+    except OSError as exc:
+        raise CliError("cannot write %s (%s). Is the folder there?" % (shown(out), exc))
     print("View key written to %s" % shown(out))
     print("Whoever holds that file can SEE every payment to your address and its amount, forever, and can never spend any of it.")
     if owned is None:
@@ -335,10 +376,13 @@ def cmd_wallet_export_view(ctx: Ctx, args) -> None:
 
 
 def cmd_watch(ctx: Ctx, args) -> None:
-    view = Wallet.load_view_key(args.viewkey, ctx.prefix)
+    try:
+        view = Wallet.load_view_key(args.viewkey, ctx.prefix)
+        markers = Wallet.load_view_markers(args.viewkey)
+    except (OSError, ValueError, KeyError, AttributeError) as exc:
+        raise CliError("cannot read the view-key file %s (%s)" % (args.viewkey, exc))
     print("Watching address %s with a view key only" % short(view.address, 40))
     started = time.time()
-    markers = Wallet.load_view_markers(args.viewkey)
     owned, _, tip = sync_outputs(view, None, None, ctx.scan_page, ctx.block_hash_at, markers=markers)
     unknown = sum(1 for u in owned if u["spent"] is None)
     print_owned(ctx, owned, tip, started)
@@ -357,9 +401,15 @@ def cmd_send(ctx: Ctx, args) -> None:
         fee = to_units(args.fee, ctx.decimals) if args.fee else None       # None = exactly the minimum for the size
     except ValueError as exc:
         raise CliError(str(exc))
+    if amount <= 0:
+        raise CliError("the amount must be more than zero")
     if fee is not None:
         print("Note: a fee you choose yourself stands out on the chain. Leave --fee off to pay what everyone pays.")
+    ctx.api("GET", "/api/info", timeout=30)        # is the node there? Ask before the password, not after
     wallet = load_wallet(ctx, args.name, args.password)
+    own = [number for number, address, _ in wallet.addresses() if address == args.to]
+    if own:
+        print("Note: that is one of your own addresses (#%d). The coins stay yours; only the fee is spent." % own[0])
     owned, tip = ctx.sync(wallet, args.name)
     # What can be spent right now: not spent, not already in a payment that is waiting to be
     # mined (never use a coin twice), and old enough (see output_lock_blocks).
@@ -520,11 +570,17 @@ def cmd_tx(ctx: Ctx, args) -> None:
 
 
 # ----------------------------------------------------------------------------- payment proofs
-def _write_proofs(proofs: list, out: str | None, txid: str, kind: str) -> None:
+def _write_proofs(ctx: Ctx, proofs: list, out: str | None, txid: str, kind: str) -> None:
+    folder = os.path.join(ctx.data_dir, "wallets", "proofs")
     for proof in proofs:
-        path = out if out and len(proofs) == 1 else "%s-%s-%d.json" % (txid[:12], kind, proof["index"])
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(proof, fh, indent=2)
+        path = out if out and len(proofs) == 1 else os.path.join(folder, "%s-%s-%d.json" % (txid[:12], kind, proof["index"]))
+        try:
+            if path.startswith(folder):
+                os.makedirs(folder, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(proof, fh, indent=2)
+        except OSError as exc:
+            raise CliError("cannot write %s (%s). Is the folder there?" % (shown(path), exc))
         print("Proof written to %s" % shown(path))
     print("It shows whoever gets it that this payment went to that address, and how much - nothing else.")
     print("Give it only to the person who needs it. They check it with:  python coin.py proof check <file>")
@@ -538,6 +594,8 @@ def cmd_proof(ctx: Ctx, args) -> None:
                 proof = json.load(fh)
         except (OSError, ValueError) as exc:
             raise CliError("cannot read %s (%s)" % (args.target, exc))
+        if not isinstance(proof, dict) or not isinstance(proof.get("txid"), str):
+            raise CliError("%s is not a Vesper payment proof" % args.target)
         d = ctx.api("GET", "/api/tx/%s" % proof.get("txid"))
         outputs = d["tx"]["outputs"]
         index = proof.get("index")
@@ -559,7 +617,7 @@ def cmd_proof(ctx: Ctx, args) -> None:
         if not entries:
             raise CliError("this wallet has no record of paying in %s (payments made before proofs existed have none)" % short(txid, 16))
         made = [proofs.payment_proof(txid, e["index"], e["address"], scalar_from_hex(e["r"]), ctx.prefix) for e in entries]
-        _write_proofs(made, args.out, txid, "payment")
+        _write_proofs(ctx, made, args.out, txid, "payment")
     else:
         d = ctx.api("GET", "/api/tx/%s" % txid)
         view = wallet.view_key()
@@ -571,7 +629,7 @@ def cmd_proof(ctx: Ctx, args) -> None:
                                                  view.view_priv, ctx.prefix))
         if not made:
             raise CliError("no output of %s was paid to this wallet" % short(txid, 16))
-        _write_proofs(made, args.out, txid, "receipt")
+        _write_proofs(ctx, made, args.out, txid, "receipt")
 
 
 def cmd_peers(ctx: Ctx, args) -> None:
@@ -607,6 +665,9 @@ def cmd_reset_chain(ctx: Ctx, args) -> None:
 
 
 def cmd_validate(ctx: Ctx, args) -> None:
+    if not os.path.exists(os.path.join(ctx.data_dir, "chain.jsonl")):
+        print("No saved chain in %s: nothing to check." % shown(ctx.data_dir))
+        return
     print("Re-checking every block in %s from the genesis block (every proof of work, signature and sum)..." % shown(ctx.data_dir))
     started = time.time()
     try:
@@ -727,6 +788,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("peers"); p.add_argument("action", nargs="?", default="list", choices=["list", "add"]); p.add_argument("url", nargs="?"); p.set_defaults(func=cmd_peers)
     sub.add_parser("validate").set_defaults(func=cmd_validate)
     sub.add_parser("reset-chain", help="delete the saved chain (never the wallets) to start from a fresh genesis").set_defaults(func=cmd_reset_chain)
+    for command in sub.choices.values():          # the same four options after the command too; given there, they win
+        for flag in ("--node", "--proxy", "--data-dir", "--config"):
+            command.add_argument(flag, default=argparse.SUPPRESS)
     return parser
 
 
