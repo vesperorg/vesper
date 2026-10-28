@@ -923,6 +923,7 @@ class CappedServer(ThreadingHTTPServer):
     away: the owner's wallet must always get in."""
 
     daemon_threads = True
+    request_queue_size = 64        # connections waiting to be accepted; Windows resets new ones when this is full
     exempt = LOOPBACK
     max_per_address = MAX_PER_ADDRESS
 
@@ -1082,6 +1083,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(block) if block else self._error(404, "no such block")
             if len(route) == 2 and route[0] == "tx":
                 found = chain.find_tx(route[1])
+                held = node.stempool.get(route[1]) if not found and local else None
+                if held:                              # this computer's own payment, still on its stem: only its owner may know
+                    return self._json({"tx": held["tx"], "block": None, "confirmations": 0, "stem": True})
                 if not found:
                     return self._error(404, "no such transaction")
                 tx, index = found

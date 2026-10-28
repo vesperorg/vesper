@@ -82,6 +82,16 @@ class Ctx:
                            "recovery code:  python coin.py wallet restore --name %s-restored" % (shown(path), exc, name))
 
     def api(self, method: str, path: str, payload=None, timeout=60):
+        if method == "GET":
+            try:
+                return self._api(method, path, payload, timeout)
+            except CliError as exc:
+                if "10054" not in str(exc) and "reset" not in str(exc).lower():
+                    raise
+                time.sleep(2)                  # a busy node reset a read (it had just started its miner): ask once more
+        return self._api(method, path, payload, timeout)
+
+    def _api(self, method: str, path: str, payload=None, timeout=60):
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
         req = urllib.request.Request(self.node_url + path, data=data, method=method, headers={"Content-Type": "application/json"})
         try:
