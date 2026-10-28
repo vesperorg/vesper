@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import sys
 import threading
@@ -423,8 +424,9 @@ class App:
 
 def clean_name(name: str) -> str:
     name = str(name).strip()
-    if not name or any(ch in name for ch in '\\/:*?"<>|') or name.startswith(".") or len(name) > 40:
-        raise AppError("a wallet name is 1 to 40 plain characters (letters, digits, spaces, dashes)")
+    # the same rule as coin.Ctx.wallet_path, so a name never gets as far as a file-system error
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,39}", name):
+        raise AppError("a wallet name is 1 to 40 letters, digits, '_', '-' or '.', with no spaces; for example: savings")
     return name
 
 
