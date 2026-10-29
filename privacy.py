@@ -214,26 +214,33 @@ class ViewKey:
             index = int(output["index"])
             if shared_point is None:
                 shared_point = self.shared_point(output["ephemeral_pub"])
-            if output["view_tag"] != _view_tag(shared_point, index):
-                return None                              # 255 times in 256, the work stops here
-            shared = hash_to_scalar("stealth", shared_point, index)
-            spend = Point.from_hex_unchecked(output["one_time_pub"]) - G * shared
-            i = self._lookup(spend)
-            if i is None:
-                return None
-            anchor = _xor(bytes.fromhex(output["enc_anchor"]), _anchor_mask(shared_point, index))
-            if len(anchor) != ANCHOR_BYTES or (spend * _ephemeral(anchor, spend * self.view_priv, spend)).hex() != output["ephemeral_pub"]:
-                return None                              # not made for this address: a Janus probe, or junk
-            if "amount" in output:                       # a mining reward: public amount, no blinding
-                amount, blinding = int(output["amount"]), 0
-            else:
-                amount = decrypt_amount(output["enc_amount"], shared_point, index)
-                blinding = hash_to_scalar("blinding", shared_point, index)
-            if commit(amount, blinding) != Point.from_hex_unchecked(output["commitment"]):
-                return None                              # the sender lied about the amount: unspendable, ignore
-            return {"amount": amount, "blinding": blinding, "shared": (shared + self._offsets[i]) % L, "address": i}
+            found = self._open_at(output, shared_point, index)
+            if found is None and index != 0 and "amount" in output:
+                found = self._open_at(output, shared_point, 0)     # a pool payout: made at index 0, before its place was known
+            return found
         except Exception:
             return None
+
+    def _open_at(self, output: dict, shared_point, index: int):
+        """`open` for the output as if it was made at `index`."""
+        if output["view_tag"] != _view_tag(shared_point, index):
+            return None                                  # 255 times in 256, the work stops here
+        shared = hash_to_scalar("stealth", shared_point, index)
+        spend = Point.from_hex_unchecked(output["one_time_pub"]) - G * shared
+        i = self._lookup(spend)
+        if i is None:
+            return None
+        anchor = _xor(bytes.fromhex(output["enc_anchor"]), _anchor_mask(shared_point, index))
+        if len(anchor) != ANCHOR_BYTES or (spend * _ephemeral(anchor, spend * self.view_priv, spend)).hex() != output["ephemeral_pub"]:
+            return None                                  # not made for this address: a Janus probe, or junk
+        if "amount" in output:                           # a mining reward: public amount, no blinding
+            amount, blinding = int(output["amount"]), 0
+        else:
+            amount = decrypt_amount(output["enc_amount"], shared_point, index)
+            blinding = hash_to_scalar("blinding", shared_point, index)
+        if commit(amount, blinding) != Point.from_hex_unchecked(output["commitment"]):
+            return None                                  # the sender lied about the amount: unspendable, ignore
+        return {"amount": amount, "blinding": blinding, "shared": (shared + self._offsets[i]) % L, "address": i}
 
     def is_mine(self, output: dict) -> bool:
         return self.open(output) is not None

@@ -859,6 +859,9 @@ class Blockchain:
         self.ring_size = int(rules.get("ring_size", 16))
         if not 2 <= self.ring_size <= 64:
             raise ChainError("consensus.ring_size must be between 2 and 64")
+        self.max_coinbase_outputs = int(rules.get("max_coinbase_outputs", MAX_OUTPUTS))   # a pool block pays many
+        if not MAX_OUTPUTS <= self.max_coinbase_outputs <= 1024:
+            raise ChainError("consensus.max_coinbase_outputs must be between %d and 1024" % MAX_OUTPUTS)
         self.output_lock = int(rules.get("output_lock_blocks", 10))
         if self.output_lock < 0:
             raise ChainError("consensus.output_lock_blocks must not be negative")
@@ -1180,8 +1183,8 @@ class Blockchain:
         if tx["height"] != height:
             raise ChainError("coinbase fields are malformed")
         outputs = tx["outputs"]
-        if not isinstance(outputs, list) or len(outputs) > MAX_OUTPUTS:
-            raise ChainError("coinbase must have at most %d outputs" % MAX_OUTPUTS)
+        if not isinstance(outputs, list) or len(outputs) > self.max_coinbase_outputs:
+            raise ChainError("coinbase must have at most %d outputs" % self.max_coinbase_outputs)
         total, fund_outputs = 0, []
         for i, out in enumerate(outputs):
             auditable = isinstance(out, dict) and "ephemeral_secret" in out
@@ -1461,14 +1464,17 @@ class Blockchain:
         return chosen
 
     # ---- mining -----------------------------------------------------------------
-    def create_candidate_block(self, miner_address: str) -> dict:
+    def create_candidate_block(self, miner_address: str, coinbase_builder: Optional[Callable] = None) -> dict:
+        """`coinbase_builder(height, total, fund address, fund amount)`: a pool's coinbase instead of
+        one paying `miner_address` (pool.py)."""
         with self.lock:
             height = len(self.blocks)
             txs = self.select_transactions()
             fees = sum(tx["fee"] for tx in txs)
             timestamp = max(int(time.time()), self.median_time_past(self.blocks, height) + 1)
-            coinbase = make_coinbase_tx(miner_address, self.reward_at(height) + fees, height, self.prefix,
-                                        self.dev_fund_address, self.dev_fund_at(height))
+            build = coinbase_builder or (lambda h, total, fund_address, fund_amount: make_coinbase_tx(
+                miner_address, total, h, self.prefix, fund_address, fund_amount))
+            coinbase = build(height, self.reward_at(height) + fees, self.dev_fund_address, self.dev_fund_at(height))
             all_txs = [coinbase] + txs
             return {
                 "index": height, "timestamp": timestamp, "previous_hash": self.tip["hash"],

@@ -113,7 +113,7 @@ Without `pynacl` everything still works on the built-in pure-Python curve, about
 
 | Step | Double-click | What happens |
 |---|---|---|
-| 1 | `selftest.bat` | 45 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
+| 1 | `selftest.bat` | 46 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
 | 2 | `wallet.bat` | Creates your wallet (two secret keys, one password). Shows your `tvsp...` address and a 55-character RECOVERY CODE: write it on paper, it is the wallet. |
 | 3 | `start_node.bat` | Node + explorer at http://127.0.0.1:8880, mining to your wallet. |
 | 4 | `explorer.bat` | Watch blocks arrive. Payments show as "one of a ring of 48 -> sealed amount -> one-time key". |
@@ -240,7 +240,7 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 - `python coin.py devfund init` creates the fund wallet and writes its address into `config.json`. That changes the genesis block, so do it before the chain starts and back up the wallet file.
 - `python coin.py devfund show` and the explorer show received, unspent and spent totals.
 
-## Mining together: a pool with no operator (planned, not built)
+## Mining together: a pool with no operator (rules built, not yet in the node)
 
 With many miners, one ordinary computer wins a block rarely and at random: at 100 miners like
 it, about once every 50 minutes on average, sometimes hours apart. Miners pool their work to be
@@ -280,6 +280,8 @@ can trust its workers), but they would let a P2Pool member take the whole reward
 would break P2Pool along with the ordinary pools. So "the only pool" means: built into the node,
 the easiest way to mine together, and the only one Vesper's software, pages and community will
 support.
+
+Stage 1 is built (`pool.py`, a self-test check): the share chain and its difficulty, the split, the payout stubs, the check every member runs on every share, and a block a pool coinbase pays. Two details settled on the way. A stub is made at index 0, because nobody knows in advance where in a coinbase it will sit; a wallet that does not find a public-amount output at its own index tries index 0 (one hash more per mining reward). And `consensus.max_coinbase_outputs` is read only when a network's rules name it, so testnet-1 keeps 16 and its genesis is unchanged. Not built yet: shares travelling between nodes, `node.py --pool`, uncles.
 
 Order of work: a test pool on the test network first, then the coinbase change, then measured
 results (payout regularity, coinbase size, how much a pool block costs to check) before mainnet.
@@ -332,7 +334,7 @@ one. Each node checks a payment alone once; blocks, syncing and disk all get che
 | `powcore.py` | The proof-of-work function alone, so mining workers start fast. |
 | `powpool.py` | Mining on several CPU cores with worker processes (Python threads cannot run the tries side by side). |
 | `coin.py` | Command line. |
-| `selftest.py` | 45 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
+| `selftest.py` | 46 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
 | `demo.py` | One private payment as a story. |
 | `testdrive.py` | The public test drive, run for you: two throwaway nodes, a payment each way, the view key, a search of the raw chain, five break-it attempts. Deletes its folders afterwards. |
 | `DECISIONS.md` | Why each choice was made. |

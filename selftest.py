@@ -1860,6 +1860,46 @@ def test_a_node_nobody_can_reach_hands_over_its_branch():
         shutil.rmtree(tmp_b, ignore_errors=True)
 
 
+def test_a_pool_with_no_operator_pays_every_member():
+    """Mining together without a company in the middle (pool.py): members mine shares at an
+    easier target, every block pays the last shares in proportion to their work, straight to
+    one-time keys their own wallets made, and a share that pays anyone the wrong amount, or
+    builds on a share nobody has, is refused."""
+    from pool import PoolError, ShareChain, mine_share, split
+    config = deep_merge(CONFIG, {"consensus": {"initial_difficulty": 32, "max_coinbase_outputs": 64}})
+    c = new_chain(config=config)
+    members = {name: Wallet.generate(PREFIX) for name in ("ana", "ben", "cal")}
+    shares = ShareChain(c, {"window": 12, "initial_share_difficulty": 4, "halflife_seconds": 0})
+    expected, owners, names, made, found = dict.fromkeys(members, 0), {}, list(members), 0, 0
+    while found < 2:
+        name = names[made % 3]
+        share, block = mine_share(shares, members[name].address)
+        owners[share["stub"]["one_time_pub"]] = name
+        shares.add(share)
+        made += 1
+        if block:
+            c.add_block(block)                     # the node checks it like any other block
+            found += 1
+            for out in block["transactions"][0]["outputs"]:
+                expected[owners[out["one_time_pub"]]] += out["amount"]
+    assert sum(expected.values()) == c.reward_at(1) + c.reward_at(2)
+    outputs = c.all_outputs()
+    for name, wallet in members.items():
+        assert sum(u["amount"] for u in scan_outputs(wallet.view_key(), outputs)) == expected[name], \
+            "%s's wallet must find exactly its part of every block" % name
+    assert len(owners) == made, "every share has its own payout key"
+    share, _ = mine_share(shares, members["ana"].address)
+    forged_stub = dict(share["stub"], view_tag="00" if share["stub"]["view_tag"] != "00" else "01")
+    for bad, word in ((dict(share, stub=forged_stub), "in proportion"), (dict(share, parent="ab" * 32), "unknown parent")):
+        try:
+            shares.check(bad)
+            raise AssertionError("a bad share was accepted")
+        except PoolError as exc:
+            assert word in str(exc), str(exc)
+    assert split(10, [1, 1, 1]) == [3, 3, 4]
+    assert c.max_coinbase_outputs == 64 and new_chain().max_coinbase_outputs == 16, "testnet-1 keeps 16 (its genesis is unchanged)"
+
+
 def test_phase4_one_peer_cannot_fill_the_peer_table():
     """Gossip only suggests addresses.  A node checks a couple per round, keeps its peers spread
     over different networks, sends nothing to home-network addresses it heard about, and passes
@@ -2222,6 +2262,7 @@ TESTS = [
     test_phase4_limits_and_bans,
     test_phase4_one_peer_cannot_fill_the_peer_table,
     test_a_node_nobody_can_reach_hands_over_its_branch,
+    test_a_pool_with_no_operator_pays_every_member,
     test_phase4_peers_can_be_reached_through_tor,
     test_phase4_silent_connections_cannot_lock_the_node,
     test_phase4_leak_measurement,
