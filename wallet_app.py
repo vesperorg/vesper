@@ -134,7 +134,9 @@ class App:
                     break
                 except coin.CliError as exc:
                     # a first scan is about a hundred requests; one dropped connection should not fail the whole thing
-                    if attempt == 2 or "cannot reach the node" not in str(exc):
+                    msg = str(exc)
+                    reset = "10054" in msg or "reset" in msg.lower() or "forcibly closed" in msg
+                    if attempt == 2 or not reset:   # a node that is simply not running is reported at once
                         raise
                     time.sleep(1.5)
             self.session.last_owned, self.session.last_tip = owned, tip
