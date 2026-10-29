@@ -476,7 +476,7 @@
   window.downloadProofs = function () { if (!state.proofs) return; state.proofs.forEach(function (p, i) { download((p.txid || "payment").slice(0, 12) + "-receipt-" + i + ".json", JSON.stringify(p, null, 2)); }); };
   window.checkProof = async function () {
     $("check-out").textContent = "";
-    try { var d = await api("POST", "/app/proof/check", { proof: $("check-text").value }); $("check-out").innerHTML = '<div class="note ok"><b>The receipt holds.</b> ' + esc(d.amount) + ' was paid to<br><span class="mono">' + esc(d.address) + '</span><br>' + (d.block !== null && d.block !== undefined ? "in block " + d.block + ", " + d.confirmations + " confirmation" + (d.confirmations === 1 ? "" : "s") : "not mined yet") + "; made by the " + esc(d.made_by) + ".</div>"; }
+    try { var d = await api("POST", "/app/proof/check", { proof: $("check-text").value }); $("check-out").innerHTML = '<div class="note ok"><b>The receipt holds.</b> ' + esc(d.amount) + ' was paid to<br><span class="mono">' + esc(d.address) + '</span><br>' + (d.block !== null && d.block !== undefined ? "in block " + d.block + ", " + d.confirmations + " confirmation" + (d.confirmations === 1 ? "" : "s") : (d.stem ? "not announced yet: it is still on its quiet hand-off from your node" : "not mined yet")) + "; made by the " + esc(d.made_by) + ".</div>"; }
     catch (e) { $("check-out").innerHTML = '<div class="note bad">' + esc(e.message) + '</div>'; }
   };
 

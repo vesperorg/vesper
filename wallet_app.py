@@ -311,7 +311,7 @@ class App:
             except ValueError as exc:
                 raise AppError("the proof does NOT hold: %s" % exc)
             return {"holds": True, "address": proof["address"], "amount": self.fmt(amount), "txid": proof["txid"],
-                    "block": d.get("block"), "confirmations": d.get("confirmations"),
+                    "block": d.get("block"), "confirmations": d.get("confirmations"), "stem": bool(d.get("stem")),
                     "made_by": "payer" if proof.get("kind") == "payment" else "receiver"}
 
         if method == "GET" and path == "/app/viewkey":
