@@ -36,7 +36,7 @@ with **"14 of 14 checks behaved as the test drive page says."** and deletes its 
 test-drive page on the site walks through the same output line by line:
 https://vesperorg.github.io/vesper/testdrive.html
 
-## 4. Run the 45 checks (2 minutes)
+## 4. Run the 46 checks (2 minutes)
 
 Double-click **`selftest.bat`**. It tries to double-spend, forge signatures, print coins four ways,
 rewrite history and cheat the development fund, and confirms that no address, amount or spent coin
