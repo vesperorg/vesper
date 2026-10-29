@@ -44,6 +44,7 @@ from chain import (BLOCK_KEYS, HERE, MAX_LOOKUP, Blockchain, ChainError, compute
                    load_config, lock_data_dir, resolve_data_dir)
 import socket
 import socksproxy
+from pool import PoolError, ShareChain, mine_share
 from powpool import PowPool, default_processes
 from privacy import is_valid_address
 from relay import LOCAL, BanList, RateLimiter, StemRouter
@@ -190,6 +191,9 @@ class Miner:
             if waiting:
                 log.info("caught up - mining")
                 waiting = False
+            if self.node.sharechain is not None:
+                self._mine_share()
+                continue
             try:
                 block = self.node.chain.mine_block(self.address,
                                                    should_abort=lambda: self._stop.is_set() or self.node.catching_up.is_set(),
@@ -207,6 +211,24 @@ class Miner:
             if block is not None:
                 self.blocks_found += 1
                 self.node.on_block_mined(block)
+
+    def _mine_share(self) -> None:
+        """One round of pool mining: search for a share until one is found or what it builds on changes."""
+        try:
+            result = mine_share(self.node.sharechain, self.address, pow_pool=self.pool, on_progress=self._progress,
+                                should_abort=lambda: self._stop.is_set() or self.node.catching_up.is_set())
+        except RuntimeError as exc:                      # the worker processes died: carry on, on one core
+            log.warning("%s; mining continues on one core", exc)
+            if self.pool is not None:
+                self.pool.close()
+            self.pool = None
+            return
+        except ChainError as exc:
+            log.warning("pool mining problem: %s", exc)
+            self._stop.wait(2)
+            return
+        if result is not None:
+            self.node.on_share_mined(*result)
 
     def _progress(self, hashes: int) -> None:
         self.total_hashes += hashes
@@ -259,6 +281,15 @@ class Node:
         self._seen: dict[str, float] = {}
         self._seen_lock = threading.Lock()
         self._sync_lock = threading.Lock()
+        self.sharechain = None                        # set when this node mines in a pool (--pool)
+        pool_rules = config.get("pool") or {}
+        if pool_rules.get("enabled"):
+            try:
+                self.sharechain = ShareChain(self.chain, {k: v for k, v in pool_rules.items() if k != "enabled"})
+            except PoolError as exc:
+                raise ChainError("this network's rules do not allow pool blocks (%s). A pool runs on a network whose "
+                                 "rules set consensus.max_coinbase_outputs." % exc)
+        self.shares_found = 0
         self.catching_up = threading.Event()          # set while a peer ahead of us is being caught up with
         self.first_sync_done = threading.Event()      # set once every peer has been asked
         self._inbound = None                          # (sender, fork, last batch time): a branch being handed to us
@@ -617,6 +648,86 @@ class Node:
                  block["index"], self.chain.fmt(reward), len(block["transactions"]), block["difficulty"], block["hash"][:16])
         self.broadcast("/api/block", block)
 
+    # ---- the pool: shares in and out -------------------------------------------------
+    def on_share_mined(self, share: dict, block: dict | None) -> None:
+        try:
+            self.sharechain.add(share)
+        except PoolError as exc:                          # the share chain moved while it was being mined
+            log.debug("own share dropped: %s", exc)
+            return
+        self.shares_found += 1
+        log.info("SHARE %d  difficulty %d  pays %d share(s)%s", self.sharechain.meta[compute_block_hash(share["header"])]["height"],
+                 self.sharechain.meta[compute_block_hash(share["header"])]["difficulty"], len(share["coinbase"]["outputs"]),
+                 "  - and it is a BLOCK" if block else "")
+        for peer in list(self.peers):
+            self.spawn(self._push_share, peer, share)
+        if block is not None:
+            try:
+                self.chain.add_block(block)
+            except ChainError as exc:
+                log.info("pool block %d came too late: %s", block["index"], exc)
+                return
+            self.on_block_mined(block)
+
+    def _push_share(self, peer: str, share: dict) -> None:
+        """Hand a share to a peer; if the peer lacks the shares it builds on, hand those over too
+        (a peer may be unable to reach this node to fetch them, as with blocks)."""
+        try:
+            self._request(peer, "POST", "/api/pool/share", share, 30)
+        except Exception as exc:
+            if "unknown parent" in str(exc) or "409" in str(exc):
+                try:
+                    self._request(peer, "POST", "/api/pool/shares", {"shares": self.sharechain.recent(int(self.sharechain.rules["window"]))}, 60)
+                except Exception as more:
+                    log.debug("handing shares to %s failed: %s", peer, more)
+            else:
+                log.debug("handing a share to %s failed: %s", peer, exc)
+
+    def receive_share(self, share, sender: str | None = None) -> bool:
+        if self.sharechain is None:
+            raise Refused(404, "this node is not in a pool")
+        if not isinstance(share, dict) or not isinstance(share.get("header"), dict):
+            raise PoolError("malformed share")
+        share_id = compute_block_hash(share["header"])
+        if not self._mark_seen("s:" + share_id):
+            return False
+        try:
+            new_tip = self.sharechain.add(share)
+        except PoolError:
+            with self._seen_lock:
+                self._seen.pop("s:" + share_id, None)    # it may fit later, once its parent is here
+            raise
+        for peer in list(self.peers):
+            if peer != sender:
+                self.spawn(self._push_share, peer, share)
+        return new_tip
+
+    def receive_shares(self, shares) -> dict:
+        """Several shares, oldest first (a member catching this node up).  Ones it has, and ones
+        that do not fit, are skipped; the first that breaks a rule ends it."""
+        if self.sharechain is None:
+            raise Refused(404, "this node is not in a pool")
+        if not isinstance(shares, list) or len(shares) > 2 * int(self.sharechain.rules["window"]):
+            raise PoolError("send at most %d shares at a time" % (2 * int(self.sharechain.rules["window"])))
+        added = 0
+        for share in shares:
+            try:
+                self.sharechain.add(share)
+                added += 1
+            except PoolError as exc:
+                if "unknown parent" not in str(exc) and "too old" not in str(exc):
+                    raise
+        return {"added": added, "tip": self.sharechain.tip}
+
+    def sync_shares(self, peer: str) -> None:
+        if self.sharechain is None:
+            return
+        try:
+            shares = self._get(peer, "/api/pool/chain?limit=%d" % int(self.sharechain.rules["window"]), timeout=30).get("shares", [])
+            self.receive_shares(shares if isinstance(shares, list) else [])
+        except Exception as exc:
+            log.debug("fetching shares from %s failed: %s", peer, exc)
+
     def mine_now(self, address: str | None, count: int) -> list[dict]:
         address = address or self.reward_address
         if not address:
@@ -812,6 +923,7 @@ class Node:
                 self.push_to(peer)
             except Exception as exc:
                 log.debug("handing our side to %s failed: %s", peer, exc)
+            self.sync_shares(peer)
             if self.announce_url:
                 self._post(peer, "/api/peers", {"peer": self.announce_url})
             try:
@@ -844,6 +956,8 @@ class Node:
                      "uptime_seconds": int(time.time() - self.started), "peers": sorted(self.peers),
                      "reward_address": self.reward_address if private else None,
                      "miner": self.miner.status(private)})
+        if self.sharechain is not None:
+            data["pool"] = dict(self.sharechain.status(), shares_found_here=self.shares_found if private else None)
         if private:          # the stem role would help an attacker map the relay graph: owner only
             data["relay"] = {"stem_payments_held": len(self.stempool), "ends_stems_this_epoch": self.router.diffuser,
                              "stem_relays": list(self.router.relays)}
@@ -1104,6 +1218,14 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"peers": sorted(node.peers)})
             if route == ["miner"]:
                 return self._json(node.miner.status(private=local))
+            if route[:1] == ["pool"]:                 # the pool's share chain, for members
+                if node.sharechain is None:
+                    return self._error(404, "this node is not in a pool")
+                if route == ["pool"]:
+                    return self._json(node.sharechain.status())
+                if route == ["pool", "chain"]:
+                    limit = max(1, min(2 * int(node.sharechain.rules["window"]), int(query.get("limit", ["60"])[0])))
+                    return self._json({"shares": node.sharechain.recent(limit)})
             if len(route) == 2 and route[0] == "address":
                 return self._error(404, "there are no addresses on this chain to look up - that is the point. Scan with your view key instead.")
             return self._error(404, "not found")
@@ -1129,7 +1251,7 @@ class Handler(BaseHTTPRequestHandler):
             control = route in (["mine"], ["miner", "start"], ["miner", "stop"])
             local = self._guard(control)
             client_ip = self.client_address[0]
-            kind = "tx" if route[:1] == ["tx"] else "block" if route in (["block"], ["branch"]) else "lookup" if route[:1] == ["outputs"] else "read"
+            kind = "tx" if route[:1] == ["tx"] else "block" if route in (["block"], ["branch"]) or route[:1] == ["pool"] else "lookup" if route[:1] == ["outputs"] else "read"
             node.admit(client_ip, kind, local)
             body = self._body()
             if not isinstance(body, dict):
@@ -1162,6 +1284,17 @@ class Handler(BaseHTTPRequestHandler):
                     node.penalise(client_ip, 50, local, "blocks that break the rules")
                     raise
                 return self._json({"accepted": accepted, "height": chain.height})
+            if route in (["pool", "share"], ["pool", "shares"]):     # pool members hand each other shares
+                sender = node.claimed_peer(self.headers.get("X-Node-Url"), client_ip)
+                try:
+                    if route == ["pool", "share"]:
+                        return self._json({"accepted": node.receive_share(body, sender)})
+                    return self._json(node.receive_shares(body.get("shares")))
+                except PoolError as exc:
+                    if "unknown parent" in str(exc):
+                        return self._error(409, str(exc))
+                    node.penalise(client_ip, 20, local, "shares that break the pool's rules")
+                    raise
             if route == ["branch"]:                   # a peer we cannot reach hands us its side of the chain
                 try:
                     return self._json(node.receive_branch(body.get("blocks"), client_ip))
@@ -1236,6 +1369,7 @@ def main(argv=None) -> None:
     parser.add_argument("--mine-to")
     parser.add_argument("--processes", type=int, help="CPU cores to mine on (default: half the cores, at most 8)")
     parser.add_argument("--proxy", help="reach every peer through Tor or another SOCKS5 proxy, e.g. socks5h://127.0.0.1:9050")
+    parser.add_argument("--pool", action="store_true", help="mine in the pool with no operator (needs a network whose rules allow pool blocks)")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -1246,6 +1380,8 @@ def main(argv=None) -> None:
         sys.exit(2)
     if args.processes:
         config["mining"]["processes"] = max(1, args.processes)
+    if args.pool:
+        config.setdefault("pool", {})["enabled"] = True
     if args.proxy:
         config["network"]["proxy"] = args.proxy
     if config["network"].get("proxy"):

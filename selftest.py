@@ -1888,6 +1888,11 @@ def test_a_pool_with_no_operator_pays_every_member():
         assert sum(u["amount"] for u in scan_outputs(wallet.view_key(), outputs)) == expected[name], \
             "%s's wallet must find exactly its part of every block" % name
     assert len(owners) == made, "every share has its own payout key"
+    mine(c, Wallet.generate(PREFIX), RING)                  # enough older outputs to hide a payment among
+    carol = Wallet.generate(PREFIX)
+    tx = pay(c, members["ana"], carol.address, coins("5"))  # a pool payout is spendable like any coin
+    mine(c, Wallet.generate(PREFIX))
+    assert tx["txid"] in c.known_txids and balance(c, carol) == coins("5"), "a pool payout must be spendable"
     share, _ = mine_share(shares, members["ana"].address)
     forged_stub = dict(share["stub"], view_tag="00" if share["stub"]["view_tag"] != "00" else "01")
     for bad, word in ((dict(share, stub=forged_stub), "in proportion"), (dict(share, parent="ab" * 32), "unknown parent")):
@@ -1898,6 +1903,32 @@ def test_a_pool_with_no_operator_pays_every_member():
             assert word in str(exc), str(exc)
     assert split(10, [1, 1, 1]) == [3, 3, 4]
     assert c.max_coinbase_outputs == 64 and new_chain().max_coinbase_outputs == 16, "testnet-1 keeps 16 (its genesis is unchanged)"
+    # between nodes (node.py --pool): a node that missed the shares a share builds on is handed them
+    from node import Node
+    pool_config = deep_merge(config, {"pool": {"enabled": True, "window": 12, "initial_share_difficulty": 4, "halflife_seconds": 0}})
+    tmp_a, tmp_b = tempfile.mkdtemp(prefix="vesper-test-"), tempfile.mkdtemp(prefix="vesper-test-")
+    try:
+        seed = Node(pool_config, tmp_a, "127.0.0.1", 0, [], None, public_url="http://8.8.4.4:8880")
+        home = Node(pool_config, tmp_b, "127.0.0.1", 0, [], None, public_url="http://8.8.8.8:8880")
+        home.spawn = lambda fn, *args: fn(*args)                       # hand shares over at once, in this thread
+        home.peers = {"http://8.8.4.4:8880"}
+
+        def to_seed(peer, method, path, payload=None, timeout=5):
+            payload = json.loads(json.dumps(payload))
+            if path == "/api/pool/share":
+                return {"accepted": seed.receive_share(payload)}
+            return seed.receive_shares(payload["shares"])
+        home._request = to_seed
+        first, _ = mine_share(home.sharechain, members["ben"].address)
+        home.sharechain.add(first)                                     # the seed never heard of this one ...
+        second, _ = mine_share(home.sharechain, members["ben"].address)
+        home.on_share_mined(second, None)                              # ... so this one does not fit, and both are handed over
+        assert seed.sharechain.tip == home.sharechain.tip and len(seed.sharechain.shares) == 2
+        expect_error(lambda: Node(deep_merge(CONFIG, {"pool": {"enabled": True}}), tmp_a + "x",
+                                  "127.0.0.1", 0, [], None), "do not allow pool blocks")
+    finally:
+        shutil.rmtree(tmp_a, ignore_errors=True)
+        shutil.rmtree(tmp_b, ignore_errors=True)
 
 
 def test_phase4_one_peer_cannot_fill_the_peer_table():

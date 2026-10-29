@@ -19,8 +19,8 @@ that follows from its parent share's window, so the proof of work over the heade
 to the coinbase through the merkle root) also commits to the parent and to the split.  Moving a
 share to another parent, or changing anyone's amount, breaks its proof of work.
 
-This module is the rules (stage 1).  The node does not run a pool yet; see TECHNICAL.md,
-"Mining together".
+The rules are here; node.py --pool runs them (shares travel between nodes like blocks do).
+See TECHNICAL.md, "Mining together".
 """
 
 from __future__ import annotations
@@ -225,12 +225,33 @@ class ShareChain:
                 return True
             return False
 
+    def recent(self, n: int) -> list[dict]:
+        """The last `n` shares of the chain ending at the tip, oldest first: what a member that
+        has just joined needs to build on it."""
+        with self.lock:
+            out, at = [], self.tip
+            while at is not None and len(out) < n:
+                out.append(self.shares[at])
+                at = self.meta[at]["parent"]
+            out.reverse()
+            return out
+
+    def status(self) -> dict:
+        with self.lock:
+            tip = self.meta.get(self.tip) if self.tip else None
+            return {"shares_known": len(self.shares), "tip": self.tip, "height": tip["height"] if tip else None,
+                    "next_share_difficulty": self.difficulty_after(self.tip), "window": self.rules["window"],
+                    "share_seconds": self.rules["share_seconds"]}
+
 
 # ----------------------------------------------------------------------------- mining a share
 def mine_share(sharechain: ShareChain, address: str, should_abort: Optional[Callable[[], bool]] = None,
-               max_tries: int | None = None) -> tuple[dict, dict | None] | None:
+               max_tries: int | None = None, pow_pool=None,
+               on_progress: Optional[Callable[[int], None]] = None) -> tuple[dict, dict | None] | None:
     """Search for one share.  Returns (share, block): `block` is the whole main block when the
-    share also met the real difficulty (hand it to the node), else None.  None if stopped."""
+    share also met the real difficulty (hand it to the node), else None.  None if stopped, or
+    when what it was building on changed: a new main block, a new share from another member,
+    or new payments (then call it again).  `pow_pool` (powpool.PowPool): tries on several cores."""
     chain = sharechain.chain
     with sharechain.lock:
         parent = sharechain.tip
@@ -241,24 +262,49 @@ def mine_share(sharechain: ShareChain, address: str, should_abort: Optional[Call
     def build(height, total, fund_address, fund_amount):
         return pool_coinbase(paid, total, height, chain.prefix, fund_address, fund_amount)
 
+    version, built = chain.mempool_version, time.time()
     block = chain.create_candidate_block(address, coinbase_builder=build)
     header = block_header(block)
     branch = coinbase_branch([tx["txid"] for tx in block["transactions"]])
     main_target = difficulty_target(block["difficulty"])
+    algorithm, memory, passes = chain.pow_algorithm, chain.pow_memory_kib, chain.pow_passes
+
+    def outdated() -> bool:
+        return (chain.tip["hash"] != header["previous_hash"] or sharechain.tip != parent
+                or (chain.mempool_version != version and time.time() - built >= chain.refresh_seconds))
+
+    def digest_of(nonce: int) -> int:
+        return int.from_bytes(pow_digest(canonical(dict(header, nonce=nonce)), algorithm, memory, passes), "big")
+
     nonce, tries = secrets.randbelow(1 << 32), 0
     while True:
-        header["nonce"] = nonce
-        digest = int.from_bytes(pow_digest(canonical(header), chain.pow_algorithm, chain.pow_memory_kib, chain.pow_passes), "big")
-        if digest < share_target:
+        found = None
+        if pow_pool is not None:
+            head = ('{"difficulty":%d,"index":%d,"merkle_root":"%s","nonce":' % (header["difficulty"], header["index"], header["merkle_root"])).encode()
+            tail = (',"previous_hash":"%s","timestamp":%d}' % (header["previous_hash"], header["timestamp"])).encode()
+            candidate = pow_pool.step(head, tail, share_target, wait=0.5)
+            if candidate is not None and digest_of(candidate) < share_target:
+                found = candidate                         # a worker's find, checked once more here
+            if on_progress:
+                on_progress(pow_pool.take_tries())
+        else:
+            for _ in range(8):
+                if digest_of(nonce) < share_target:
+                    found = nonce
+                    break
+                nonce += 1
+            tries += 8
+            if on_progress:
+                on_progress(8)
+        if found is not None:
+            header["nonce"] = found
             share = {"header": dict(header), "coinbase": block["transactions"][0], "branch": branch, "parent": parent, "stub": stub}
-            if digest < main_target:
-                found = dict(block, nonce=nonce)
-                found["hash"] = compute_block_hash(found)
-                return share, found
+            if digest_of(found) < main_target:
+                whole = dict(block, nonce=found, timestamp=header["timestamp"])
+                whole["hash"] = compute_block_hash(whole)
+                return share, whole
             return share, None
-        nonce += 1
-        tries += 1
-        if (max_tries is not None and tries >= max_tries) or (should_abort and should_abort()):
+        if (max_tries is not None and tries >= max_tries) or (should_abort and should_abort()) or outdated():
             return None
-        if tries % 64 == 0 and int(time.time()) > header["timestamp"]:
+        if int(time.time()) > header["timestamp"]:
             header["timestamp"] = int(time.time())

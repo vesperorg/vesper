@@ -240,7 +240,7 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 - `python coin.py devfund init` creates the fund wallet and writes its address into `config.json`. That changes the genesis block, so do it before the chain starts and back up the wallet file.
 - `python coin.py devfund show` and the explorer show received, unspent and spent totals.
 
-## Mining together: a pool with no operator (rules built, not yet in the node)
+## Mining together: a pool with no operator (built; runs on a network whose rules allow it)
 
 With many miners, one ordinary computer wins a block rarely and at random: at 100 miners like
 it, about once every 50 minutes on average, sometimes hours apart. Miners pool their work to be
@@ -281,7 +281,9 @@ would break P2Pool along with the ordinary pools. So "the only pool" means: buil
 the easiest way to mine together, and the only one Vesper's software, pages and community will
 support.
 
-Stage 1 is built (`pool.py`, a self-test check): the share chain and its difficulty, the split, the payout stubs, the check every member runs on every share, and a block a pool coinbase pays. Two details settled on the way. A stub is made at index 0, because nobody knows in advance where in a coinbase it will sit; a wallet that does not find a public-amount output at its own index tries index 0 (one hash more per mining reward). And `consensus.max_coinbase_outputs` is read only when a network's rules name it, so testnet-1 keeps 16 and its genesis is unchanged. Not built yet: shares travelling between nodes, `node.py --pool`, uncles.
+Stage 1 is built (`pool.py`, a self-test check): the share chain and its difficulty, the split, the payout stubs, the check every member runs on every share, and a block a pool coinbase pays. Two details settled on the way. A stub is made at index 0, because nobody knows in advance where in a coinbase it will sit; a wallet that does not find a public-amount output at its own index tries index 0 (one hash more per mining reward). And `consensus.max_coinbase_outputs` is read only when a network's rules name it, so testnet-1 keeps 16 and its genesis is unchanged.
+
+Stage 2 is built too: `python node.py --mine --pool` mines shares instead of whole blocks, hands each share to its peers (`POST /api/pool/share`), and when a peer lacks the shares one builds on, hands those over as well, so a member behind a home router or Tor takes part like any other. Each sync round fetches the peers' recent shares (`GET /api/pool/chain`); `/api/info` shows the pool. Measured on two nodes on a throwaway pool network, two cores each, for three minutes: 70 shares, 9 blocks, both nodes on the same share and block, and the two wallets paid 260.67 and 189.33 of the 450 mined, in step with their 40 and 30 shares. Not built yet: uncles (a share that loses a race earns nothing), keeping the share chain on disk (a restarted member fetches it from its peers), and a network that allows pool blocks: testnet-1's rules allow 16 reward outputs, so the pool needs a new test network.
 
 Order of work: a test pool on the test network first, then the coinbase change, then measured
 results (payout regularity, coinbase size, how much a pool block costs to check) before mainnet.
