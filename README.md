@@ -33,7 +33,7 @@ you choose, such as an accountant, without giving anyone the power to spend.
 
 **Where it stands today, honestly:** it is Monero's design with three times Monero's ring, so a
 payment hides among 48 coins, not yet among everyone. It is **not audited**. It runs as a public test
-network, **testnet-1**, whose coins, **tVESP** (addresses start `tvsp`), are test coins with
+network, **testnet-2**, whose coins, **tVESP** (addresses start `tvsp`), are test coins with
 **no value, ever**: anyone can try it, try to break it, and help make it solid before it ever
 carries real money.
 
@@ -47,7 +47,7 @@ carries real money.
   real coin: 2.1%, the same as a pure guess (1 in 48). The crowd holds up.
 - **Private, not unaccountable.** Hand your accountant a read-only view key, or prove one payment
   to one shop with a receipt, and reveal nothing else. Both are built in, one command each.
-- **Measured, not promised.** 44 public checks run on every change, a public page lists every
+- **Measured, not promised.** 47 public checks run on every change, a public page lists every
   weakness we know of, and the network leak comes with a number instead of a slogan.
 - **A fair launch.** No coins made in advance and nothing for sale: every coin is mined, from block
   one, by whoever shows up with an ordinary computer. The first block names a Bitcoin block that
@@ -84,6 +84,11 @@ few who use it stand out; on Vesper every payment is private, so everyone hides 
   never spend.
 - **Mining on an ordinary computer.** Vesper's mining is built so a normal PC can take part, not
   just warehouses of special machines.
+- **A mining pool with no company in it.** Your node mines together with everyone else's and small
+  rewards land straight in your wallet, steadily. Nobody holds your coins, nobody learns your
+  address, and nobody chooses which payments get in.
+- **A reward that never runs out.** No halving days: the reward slides down smoothly, then settles
+  on a small amount forever, so miners are always paid to protect the chain.
 
 ## Try it in five minutes
 
@@ -105,19 +110,19 @@ receipt.
 
 | Step | Double-click | What happens |
 |---|---|---|
-| 1 | `selftest.bat` | 44 checks that try to break the rules: double spending, forged signatures, counterfeit coins, rewritten history. |
+| 1 | `selftest.bat` | 47 checks that try to break the rules: double spending, forged signatures, counterfeit coins, rewritten history. |
 | 2 | `wallet.bat` | Makes your wallet and shows your address (`tvsp...`) and your **recovery code**. Write the code on paper: it is your wallet. |
-| 3 | `start_node.bat` | Starts your node. It joins the network and mines test coins for you. |
+| 3 | `start_node.bat` | Starts your node. It joins the network and mines test coins for you, in the pool. |
 | 4 | `explorer.bat` | Watch new blocks arrive, and see that no payment shows a name or an amount. |
-| 5 | `wallet.bat` | Your balance. To pay someone: `python coin.py send <their address> <amount>` |
+| 5 | `wallet.bat` | Your balance. To pay someone: `python coin.py send THEIR-ADDRESS AMOUNT` |
 
 New coins can be spent 10 blocks after they arrive, about 5 minutes. A new node finds the network
 by itself through the public seed node listed in `config.json` (`http://207.148.85.83:8880`).
 
-**Check the fair start yourself.** The network is called testnet-1. Its first block names
-Bitcoin block 972,206 (`00000000000000000001d78e9be4ec3758abe09510a60591cf282b316f042b67`), which
+**Check the fair start yourself.** The network is called testnet-2. Its first block names
+Bitcoin block 973,926 (`00000000000000000001abe5bb923ff5f8a03586035bf86d8cc99bc1afb0863d`), which
 did not exist until minutes before launch. The first block's own ID is
-`158f6ee8eea75356358af7fe70b6e41d565ea37f8743e24df37ebb66f80393ea`, and every node checks it.
+`279154894011bf19ef475da897b9d90777fec2e5216e4786987f55ad86ff1699`, and every node checks it.
 
 ## Honest status
 

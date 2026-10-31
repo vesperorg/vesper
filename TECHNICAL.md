@@ -113,7 +113,7 @@ Without `pynacl` everything still works on the built-in pure-Python curve, about
 
 | Step | Double-click | What happens |
 |---|---|---|
-| 1 | `selftest.bat` | 46 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
+| 1 | `selftest.bat` | 47 checks. Tries to double-spend, forge ring signatures, print coins four different ways, rewrite history and cheat the development fund; and confirms no address, amount or spent output is readable on the chain. |
 | 2 | `wallet.bat` | Creates your wallet (two secret keys, one password). Shows your `tvsp...` address and a 55-character RECOVERY CODE: write it on paper, it is the wallet. |
 | 3 | `start_node.bat` | Node + explorer at http://127.0.0.1:8880, mining to your wallet. |
 | 4 | `explorer.bat` | Watch blocks arrive. Payments show as "one of a ring of 48 -> sealed amount -> one-time key". |
@@ -240,53 +240,60 @@ node: 10% for 4,204,800 blocks by default (`consensus.dev_fund` in `config.json`
 - `python coin.py devfund init` creates the fund wallet and writes its address into `config.json`. That changes the genesis block, so do it before the chain starts and back up the wallet file.
 - `python coin.py devfund show` and the explorer show received, unspent and spent totals.
 
-## Mining together: a pool with no operator (built; runs on a network whose rules allow it)
+## Mining together: a pool with no operator (on by default on testnet-2)
 
 With many miners, one ordinary computer wins a block rarely and at random: at 100 miners like
 it, about once every 50 minutes on average, sometimes hours apart. Miners pool their work to be
 paid steadily. An ordinary pool is a company: it builds every block, holds everyone's payouts and
 learns every member's address, so a handful of pools end up choosing which payments get in and
 are one subpoena from a list of miners. Vesper's pool is decentralized instead, after Monero's
-P2Pool, and it is the only pool the Vesper software will support.
+P2Pool, and it is the only pool the Vesper software supports. `start_node.bat` mines in it;
+`python node.py --mine --solo` mines alone.
 
-How it is meant to work:
+1. **A share chain beside the main chain.** Members mine ordinary Vesper blocks, but a block also
+   counts as a *share* when it meets a much easier target, one share about every 10 s across the
+   pool. Shares form their own small chain, kept by the members' nodes; nobody runs it.
+2. **Every block pays 15 slots.** One goes to the share itself; 14 are drawn from the last 360
+   shares (about an hour), weighted by the work behind each. The draw's seed is the main block and
+   the parent share, both fixed before a single try is made, so nobody can steer it, and every
+   member recomputes it to check every share.
+3. **When a share also meets the real difficulty, it is a real Vesper block.** Its coinbase has
+   already paid its slots, straight to members' wallets. There is no pool balance, nothing held for
+   anyone, and no operator who could stop paying or run off.
+4. **No addresses on the share chain.** Monero's P2Pool publishes every member's wallet address on
+   its share chain. A Vesper share carries a fresh one-time payout key instead, made by the member's
+   wallet for that share alone, so nobody can tell two shares came from the same member. It is made
+   at index 0, because nobody knows in advance where in a coinbase it will sit; a wallet that does
+   not find a public-amount output at its own index tries index 0.
+5. **Members choose their payments.** Every member builds its own block, so no pool can leave
+   payments out.
 
-1. **A share chain beside the main chain.** Pool members mine the same Vesper blocks, but a
-   block also counts as a *share* when it meets a much lower target, one share about every 10 s
-   across the pool. Shares form their own small chain, kept by the members' nodes; nobody runs it.
-2. **Every candidate block pays the recent shares.** Each member builds its own block, and its
-   coinbase pays the owners of the last N shares (a window of about N = 2,160, six hours at 10 s),
-   in proportion to the work behind each share. Each member checks the others' shares follow
-   that rule.
-3. **When a share also meets the real difficulty, it is a real Vesper block.** Its coinbase
-   already pays everyone in the window, straight to their own wallets. There is no pool balance,
-   nothing held for anyone, and no operator who could stop paying or run off.
-4. **No addresses on the share chain.** Monero's P2Pool publishes every member's wallet address
-   on its share chain. A Vesper share carries a fresh one-time payout key instead, made by the
-   member's own wallet for that share, so nobody can tell two shares came from the same member.
-5. **Members choose their payments.** Every member builds its own block template, so no pool can
-   leave payments out.
+**Why a draw and not everyone in the window.** Outputs stay on the ledger forever. A block every
+30 s paying hundreds of shares would add hundreds of millions of outputs a year, more than an
+ordinary computer can keep. Fifteen slots fit the ordinary limit of 16 reward outputs (one is kept
+for the development fund), so a pool block is an ordinary block and no rule of the chain changes
+for it. On average a member earns exactly what paying everyone would pay: 1% of the pool's work
+holds 1% of the slots, in lumps fifteen times smaller and fifteen times more often than blocks of
+its own.
 
-What it needs from the protocol (all of it changes the genesis block, so it is decided before
-mainnet): a coinbase with many outputs (today at most 16; a pool coinbase needs hundreds, each a
-one-time key with a public amount, like every mining reward today), a share format and its
-difficulty rule, and rules for shares that collide (Monero P2Pool counts them as "uncles" at a
-reduced weight so a slow connection is not punished).
+Between nodes, a share is handed to peers like a block (`POST /api/pool/share`); when a peer lacks
+the shares it builds on, those follow, so a member behind a home router or Tor takes part like any
+other. Each sync round fetches peers' recent shares (`GET /api/pool/chain`). `/api/info` shows the
+pool. Measured on two nodes for three minutes, paying every share in a 30-share window: 70 shares,
+9 blocks, both on the same share and block, wallets paid 260.67 and 189.33 of 450 for 40 and 30
+shares; with the 15-slot draw and the real curve, 65 shares, 3 blocks, 32 outputs in all, and the
+payouts add up to the three rewards to the last unit. Three blocks is too few to show the share of
+pay matching the share of work: that takes hours, which is what testnet-2 is for.
 
 What it cannot do: the protocol cannot forbid an ordinary pool. A pool operator only hands out
 block templates, and on the chain the result looks like any block. Proofs of work that stop
 outsourcing exist in research (the finder of a block could take the whole reward, so no operator
-can trust its workers), but they would let a P2Pool member take the whole reward too, and they
-would break P2Pool along with the ordinary pools. So "the only pool" means: built into the node,
-the easiest way to mine together, and the only one Vesper's software, pages and community will
-support.
+can trust its workers), but they would let a member take the whole reward too and would break this
+pool along with the ordinary ones. So "the only pool" means: built into the node, the easiest way
+to mine together, and the only one Vesper's software, pages and community support.
 
-Stage 1 is built (`pool.py`, a self-test check): the share chain and its difficulty, the split, the payout stubs, the check every member runs on every share, and a block a pool coinbase pays. Two details settled on the way. A stub is made at index 0, because nobody knows in advance where in a coinbase it will sit; a wallet that does not find a public-amount output at its own index tries index 0 (one hash more per mining reward). And `consensus.max_coinbase_outputs` is read only when a network's rules name it, so testnet-1 keeps 16 and its genesis is unchanged.
-
-Stage 2 is built too: `python node.py --mine --pool` mines shares instead of whole blocks, hands each share to its peers (`POST /api/pool/share`), and when a peer lacks the shares one builds on, hands those over as well, so a member behind a home router or Tor takes part like any other. Each sync round fetches the peers' recent shares (`GET /api/pool/chain`); `/api/info` shows the pool. Measured on two nodes on a throwaway pool network, two cores each, for three minutes: 70 shares, 9 blocks, both nodes on the same share and block, and the two wallets paid 260.67 and 189.33 of the 450 mined, in step with their 40 and 30 shares. Not built yet: uncles (a share that loses a race earns nothing), keeping the share chain on disk (a restarted member fetches it from its peers), and a network that allows pool blocks: testnet-1's rules allow 16 reward outputs, so the pool needs a new test network.
-
-Order of work: a test pool on the test network first, then the coinbase change, then measured
-results (payout regularity, coinbase size, how much a pool block costs to check) before mainnet.
+Not built yet: uncles (a share that loses a race earns nothing), and keeping the share chain on
+disk (a restarted member fetches it from its peers).
 
 ## Speed (this PC, libsodium backend, ring size 48)
 
@@ -336,7 +343,7 @@ one. Each node checks a payment alone once; blocks, syncing and disk all get che
 | `powcore.py` | The proof-of-work function alone, so mining workers start fast. |
 | `powpool.py` | Mining on several CPU cores with worker processes (Python threads cannot run the tries side by side). |
 | `coin.py` | Command line. |
-| `selftest.py` | 46 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
+| `selftest.py` | 47 checks, including phase 4 relays between nodes, a speed report and an honest list of what still leaks. |
 | `demo.py` | One private payment as a story. |
 | `testdrive.py` | The public test drive, run for you: two throwaway nodes, a payment each way, the view key, a search of the raw chain, five break-it attempts. Deletes its folders afterwards. |
 | `DECISIONS.md` | Why each choice was made. |

@@ -6,8 +6,8 @@
     "address_prefix": "tvsp"
   },
   "consensus": {
-    "genesis_timestamp": 1792442701,
-    "genesis_message": "Vesper testnet-1 - test coins, no value - begun after Bitcoin block 972206 00000000000000000001d78e9be4ec3758abe09510a60591cf282b316f042b67",
+    "genesis_timestamp": 1793420038,
+    "genesis_message": "Vesper testnet-2 - test coins, no value - begun after Bitcoin block 973926 00000000000000000001abe5bb923ff5f8a03586035bf86d8cc99bc1afb0863d",
     "block_reward": "50",
     "halving_interval_blocks": 2000,
     "target_block_seconds": 30,
@@ -29,7 +29,15 @@
       "duration_blocks": 4204800,
       "address": ""
     },
-    "network": "testnet-1"
+    "network": "testnet-2",
+    "emission": {
+      "main_curve": "18000000",
+      "curve_shift": 22,
+      "tail_start": "0.15",
+      "tail_step": "0.01",
+      "tail_step_blocks": 6307200,
+      "tail_floor": "0.05"
+    }
   },
   "network": {
     "host": "127.0.0.1",
@@ -45,5 +53,13 @@
     "hashes_per_check": 20000,
     "processes": 0
   },
-  "data_dir": "data"
+  "data_dir": "data",
+  "pool": {
+    "enabled": true,
+    "window": 360,
+    "paid_shares": 15,
+    "share_seconds": 10,
+    "initial_share_difficulty": 512,
+    "halflife_seconds": 600
+  }
 }
