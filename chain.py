@@ -859,9 +859,7 @@ class Blockchain:
         self.ring_size = int(rules.get("ring_size", 16))
         if not 2 <= self.ring_size <= 64:
             raise ChainError("consensus.ring_size must be between 2 and 64")
-        self.max_coinbase_outputs = int(rules.get("max_coinbase_outputs", MAX_OUTPUTS))   # a pool block pays many
-        if not MAX_OUTPUTS <= self.max_coinbase_outputs <= 1024:
-            raise ChainError("consensus.max_coinbase_outputs must be between %d and 1024" % MAX_OUTPUTS)
+        self._set_emission(rules.get("emission"))
         self.output_lock = int(rules.get("output_lock_blocks", 10))
         if self.output_lock < 0:
             raise ChainError("consensus.output_lock_blocks must not be negative")
@@ -925,11 +923,69 @@ class Blockchain:
     def fmt(self, units: int) -> str:
         return format_units(units, self.decimals, self.ticker)
 
+    # ---- the emission curve (a network whose rules name consensus.emission) --------------
+    def _set_emission(self, rules: dict | None) -> None:
+        """A smooth curve, then a tail that never ends: each block pays 1/2^curve_shift of what is
+        left of the main curve; once that falls to tail_start, the reward is tail_start, down
+        tail_step every tail_step_blocks, and tail_floor for ever after.  No halving day, and
+        miners are always paid.  Read only when a network names it: testnet-1 keeps its halvings."""
+        self.emission = None
+        if not rules:
+            return
+        self.emission = {"curve": to_units(rules["main_curve"], self.decimals), "shift": int(rules["curve_shift"]),
+                         "start": to_units(rules["tail_start"], self.decimals), "step": to_units(rules["tail_step"], self.decimals),
+                         "every": int(rules["tail_step_blocks"]), "floor": to_units(rules["tail_floor"], self.decimals)}
+        e = self.emission
+        if e["curve"] <= 0 or not 1 <= e["shift"] <= 40 or e["every"] < 1 or not 0 < e["floor"] <= e["start"] or e["step"] <= 0:
+            raise ChainError("consensus.emission has impossible numbers")
+        self._marks = {0: (0, 0, None)}                  # height -> (coins made so far, the fund's part, where the tail began)
+        self._mark_lock = threading.Lock()
+        self._mark_last = (0, 0, 0, None)                # the last height asked for, and its state: blocks come in order
+
+    def _emission_reward(self, height: int, minted: int, tail_from: int | None) -> tuple[int, int | None]:
+        e = self.emission
+        if tail_from is None:
+            reward = max(0, e["curve"] - minted) >> e["shift"]
+            if reward > e["start"]:
+                return reward, None
+            tail_from = height
+        return max(e["floor"], e["start"] - e["step"] * ((height - tail_from) // e["every"])), tail_from
+
+    def _emission_state(self, height: int) -> tuple[int, int, int | None]:
+        """After block `height`: (coins made by blocks 1..height, the fund's part of them, where the
+        tail began).  Each reward depends on all that came before, so the curve is walked once and
+        remembered every 4,096 blocks."""
+        with self._mark_lock:
+            at = height - height % 4096
+            while at not in self._marks:
+                at -= 4096
+            minted, fund, tail_from = self._marks[at]
+            if at <= self._mark_last[0] <= height:
+                at, minted, fund, tail_from = self._mark_last
+            while at < height:
+                at += 1
+                reward, tail_from = self._emission_reward(at, minted, tail_from)
+                minted += reward
+                if self.dev_fund_address and at <= self.dev_fund_blocks:
+                    fund += reward * self.dev_fund_percent // 100
+                if at % 4096 == 0:
+                    self._marks[at] = (minted, fund, tail_from)
+            self._mark_last = (at, minted, fund, tail_from)
+            return minted, fund, tail_from
+
     def reward_at(self, height: int) -> int:
+        if self.emission:
+            if height < 1:
+                return 0
+            minted, _, tail_from = self._emission_state(height - 1)
+            return self._emission_reward(height, minted, tail_from)[0]
         era = height // self.halving_interval
         return self.block_reward_units >> era if era < 64 else 0
 
-    def max_supply(self) -> int:
+    def max_supply(self) -> int | None:
+        """The most coins that can ever exist, or None: a tail never stops."""
+        if self.emission:
+            return None
         total, reward = 0, self.block_reward_units
         while reward:
             total += reward * self.halving_interval
@@ -952,6 +1008,8 @@ class Blockchain:
         """Coins in existence after block `height`.  Amounts are hidden, so this cannot be
         counted from the ledger - it is known because every block mints exactly its reward
         (fees are paid from existing coins, and the range proofs guarantee nobody minted more)."""
+        if self.emission:
+            return self._emission_state(height)[0]
         return self._sum_over_blocks(height, lambda reward: reward)
 
     def dev_fund_at(self, height: int) -> int:
@@ -965,6 +1023,8 @@ class Blockchain:
     def dev_fund_total_at(self, height: int) -> int:
         if not self.dev_fund_address:
             return 0
+        if self.emission:
+            return self._emission_state(min(height, self.dev_fund_blocks))[1]
         return self._sum_over_blocks(min(height, self.dev_fund_blocks), lambda reward: reward * self.dev_fund_percent // 100)
 
     def circulating_supply(self) -> int:
@@ -1183,8 +1243,8 @@ class Blockchain:
         if tx["height"] != height:
             raise ChainError("coinbase fields are malformed")
         outputs = tx["outputs"]
-        if not isinstance(outputs, list) or len(outputs) > self.max_coinbase_outputs:
-            raise ChainError("coinbase must have at most %d outputs" % self.max_coinbase_outputs)
+        if not isinstance(outputs, list) or len(outputs) > MAX_OUTPUTS:
+            raise ChainError("coinbase must have at most %d outputs" % MAX_OUTPUTS)
         total, fund_outputs = 0, []
         for i, out in enumerate(outputs):
             auditable = isinstance(out, dict) and "ephemeral_secret" in out
@@ -1681,8 +1741,8 @@ class Blockchain:
                 "work": work, "work_log2": round(math.log2(work), 2) if work else 0,
                 "circulating_supply": self.circulating_supply(), "max_supply": self.max_supply(),
                 "block_reward": self.block_reward_units, "next_reward": self.reward_at(next_height),
-                "halving_interval": self.halving_interval,
-                "blocks_until_halving": self.halving_interval - (next_height % self.halving_interval),
+                "halving_interval": None if self.emission else self.halving_interval,
+                "blocks_until_halving": None if self.emission else self.halving_interval - (next_height % self.halving_interval),
                 "target_block_seconds": self.target_seconds, "avg_block_seconds_recent": average,
                 "min_fee": self.min_fee_units, "mempool_size": len(self.mempool),
                 "output_count": len(self.state.outputs),

@@ -64,11 +64,15 @@ def main() -> int:
     with open(path, "r", encoding="utf-8") as fh:
         config = json.load(fh)
     sys.path.insert(0, HERE)
-    from chain import Blockchain, load_config
+    from chain import Blockchain, deep_merge, load_config
     old_genesis = Blockchain(load_config(path)).blocks[0]["hash"]
     old = re.search(r"Bitcoin block (\d+) ([0-9a-f]{64})", str(config["consensus"].get("genesis_message", "")))
     height, block_id = newest_bitcoin_block()
     now = int(time.time())
+    overlay = os.path.join(HERE, "deploy", network + ".json")     # what this network changes, kept until launch day
+    if os.path.exists(overlay):
+        with open(overlay, "r", encoding="utf-8") as fh:
+            config = deep_merge(config, json.load(fh))
     rules = config["consensus"]
     rules["network"] = network
     rules["genesis_timestamp"] = now
@@ -92,9 +96,12 @@ def main() -> int:
     # the one README shows)
     text = re.sub(r"(first block's own ID is\s+`)[0-9a-f]{64}(`)", lambda m: m.group(1) + genesis["hash"] + m.group(2), text)
     if text != before:
-        with open(readme, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(text)
-        print("README.md      : updated to the new Bitcoin block and genesis block ID")
+        try:
+            with open(readme, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text)
+            print("README.md      : updated to the new Bitcoin block and genesis block ID")
+        except PermissionError:
+            print("README.md      : LOCKED by another program (close it): update its block number, hash and genesis ID by hand")
     else:
         print("README.md      : did not mention the old genesis; check its test-network paragraph by hand")
     print("Network        : %s" % network)

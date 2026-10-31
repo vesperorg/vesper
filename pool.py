@@ -4,20 +4,29 @@ pool.py - mining together with no operator: the rules of a P2Pool-style share ch
 An ordinary mining pool is a company: it builds every block, holds everyone's payouts and learns
 every member's address.  Here there is no company.  Members mine ordinary Vesper blocks, but a
 block also counts as a SHARE when its proof of work meets a much easier target.  Shares form a
-small chain of their own, kept by the members' nodes.  Every member's candidate block pays the
-owners of the last `window` shares straight from the block reward, in proportion to the work
-behind each share, so when any share also meets the real difficulty it is a real Vesper block
-that has already paid everyone.  Nobody holds anything for anybody.
+small chain of their own, kept by the members' nodes.  Every member's candidate block pays
+`paid_shares` slots straight from the block reward: one to the share itself, the others drawn
+from the last `window` shares in proportion to the work behind each, so when any share also
+meets the real difficulty it is a real Vesper block that has already paid its members.  Nobody
+holds anything for anybody.
+
+Why a draw and not everyone in the window: outputs stay on the ledger forever, and a block every
+30 seconds paying hundreds of them would add hundreds of millions of outputs a year.  Fifteen
+slots fit the ordinary limit of a coinbase, cost the ledger little, and on average pay exactly
+what paying everyone would: a member with 1% of the pool's work holds 1% of the slots, in lumps
+fifteen times smaller and fifteen times more often than a block of its own.  Nobody can steer
+the draw: its seed is the main block and the share a share builds on, both fixed before a single
+try is made, and a share's own nonce and stub are not part of it.
 
 A share names no address.  It carries a payout STUB: a one-time key its owner's wallet made for
 that share alone (index 0, see privacy.ViewKey.open), so nobody can tell two shares came from
 the same member.  The amount is filled in by whoever builds the block, and it is public, like
 every mining reward.
 
-What a share commits to, and why that is enough: its block's coinbase pays exactly the split
-that follows from its parent share's window, so the proof of work over the header (which commits
-to the coinbase through the merkle root) also commits to the parent and to the split.  Moving a
-share to another parent, or changing anyone's amount, breaks its proof of work.
+What a share commits to, and why that is enough: its block's coinbase pays exactly the draw that
+follows from its parent share and its main block, so the proof of work over the header (which
+commits to the coinbase through the merkle root) also commits to them.  Moving a share to another
+parent, or changing anyone's amount, breaks its proof of work.
 
 The rules are here; node.py --pool runs them (shares travel between nodes like blocks do).
 See TECHNICAL.md, "Mining together".
@@ -25,6 +34,7 @@ See TECHNICAL.md, "Mining together".
 
 from __future__ import annotations
 
+import bisect
 import hashlib
 import secrets
 import threading
@@ -32,14 +42,15 @@ import time
 from typing import Callable, Optional
 
 from amounts import commit
-from chain import (HEADER_KEYS, Blockchain, ChainError, block_header, canonical, compute_block_hash, compute_txid,
-                   difficulty_target, merkle_root, pow_digest, step_difficulty)
+from chain import (HEADER_KEYS, MAX_OUTPUTS, Blockchain, ChainError, block_header, canonical, compute_block_hash, compute_txid,
+                   difficulty_target, pow_digest, step_difficulty)
 from privacy import make_auditable_output, make_outputs
 
 STUB_KEYS = ("one_time_pub", "ephemeral_pub", "view_tag", "enc_anchor")
 SHARE_KEYS = frozenset({"header", "coinbase", "branch", "parent", "stub"})
 DEFAULT_RULES = {
-    "window": 60,                     # shares paid by each block (Monero P2Pool: 2,160)
+    "window": 360,                    # shares the draw is made from: about an hour (Monero P2Pool: 2,160)
+    "paid_shares": 15,                # outputs a pool block pays; one more is kept for the development fund
     "share_seconds": 10,              # one share about this often, across the whole pool
     "initial_share_difficulty": 64,
     "halflife_seconds": 600,          # 0 = a fixed share difficulty (tests)
@@ -59,6 +70,22 @@ def payout_stub(address: str, prefix: str) -> dict:
     return {k: out[k] for k in STUB_KEYS}
 
 
+def draw(window: list, slots: int, seed: bytes) -> list[int]:
+    """How many of `slots` each share in `window` [(stub, weight)] wins, in proportion to its
+    weight.  Everyone computes the same draw from the same seed."""
+    won = [0] * len(window)
+    if not window:
+        return won
+    edges, running = [], 0
+    for _, weight in window:
+        running += weight
+        edges.append(running)
+    for i in range(slots):
+        point = int.from_bytes(hashlib.sha256(seed + i.to_bytes(2, "big")).digest(), "big") % running
+        won[bisect.bisect_right(edges, point)] += 1
+    return won
+
+
 def split(total: int, weights: list[int]) -> list[int]:
     """`total` in proportion to `weights`, rounded down; what the rounding leaves goes to the
     last one (the share that found the block)."""
@@ -69,7 +96,7 @@ def split(total: int, weights: list[int]) -> list[int]:
 
 
 def pool_coinbase(paid: list, total: int, height: int, prefix: str, fund_address: str = "", fund_amount: int = 0) -> dict:
-    """The coinbase of a pool block.  paid: [(stub, weight)], oldest share first, the share being
+    """The coinbase of a pool block.  paid: [(stub, slots)], oldest share first, the share being
     mined last.  A share whose part rounds down to nothing gets no output (an output of 0 is not
     allowed); its part stays with the others."""
     amounts = split(total - fund_amount, [w for _, w in paid])
@@ -109,6 +136,12 @@ def root_from_branch(coinbase_txid: str, branch: list[str]) -> str:
     return node.hex()
 
 
+def paid_from(window: list, stub: dict, paid_shares: int, parent: str | None, main_block: str) -> list:
+    seed = hashlib.sha256(("vesper/pool-draw|%s|%s" % (main_block, parent)).encode("ascii")).digest()
+    won = draw(window, paid_shares - 1, seed)
+    return [(item[0], n) for item, n in zip(window, won) if n] + [(stub, 1 if window else paid_shares)]
+
+
 # ----------------------------------------------------------------------------- the share chain
 class ShareChain:
     """Every share this member knows, and which one is the tip: the end of the chain with the
@@ -117,9 +150,9 @@ class ShareChain:
     def __init__(self, chain: Blockchain, rules: dict | None = None):
         self.chain = chain
         self.rules = dict(DEFAULT_RULES, **(rules or {}))
-        if self.rules["window"] < 1 or self.rules["window"] + 1 > chain.max_coinbase_outputs:
-            raise PoolError("a window of %d shares does not fit in a coinbase of %d outputs (one is kept for the fund)"
-                            % (self.rules["window"], chain.max_coinbase_outputs))
+        if self.rules["window"] < 1 or not 1 <= self.rules["paid_shares"] < MAX_OUTPUTS:
+            raise PoolError("a pool block pays 1 to %d shares from a window of at least 1 (one output is kept for the fund)"
+                            % (MAX_OUTPUTS - 1))
         self.shares: dict[str, dict] = {}            # id -> share
         self.meta: dict[str, dict] = {}              # id -> {"parent", "difficulty", "timestamp", "work", "height"}
         self.tip: str | None = None
@@ -146,9 +179,11 @@ class ShareChain:
         out.reverse()
         return out
 
-    def paid_by(self, parent: str | None, stub: dict) -> list:
-        """Who a share on top of `parent` with payout `stub` must pay: the window, itself last."""
-        return self.window(parent, int(self.rules["window"]) - 1) + [(stub, self.difficulty_after(parent))]
+    def paid_by(self, parent: str | None, stub: dict, main_block: str) -> list:
+        """Who a share on top of `parent` and of main block `main_block` must pay: [(stub, slots)],
+        the shares the draw picked, oldest first, and one slot for itself, last."""
+        window = self.window(parent, int(self.rules["window"]))
+        return paid_from(window, stub, int(self.rules["paid_shares"]), parent, main_block)
 
     # ---- checking and adding --------------------------------------------------------
     def check(self, share: dict) -> int:
@@ -201,11 +236,11 @@ class ShareChain:
             raise PoolError("malformed coinbase amounts")
         if total < reward:
             raise PoolError("the coinbase pays less than the block reward")
-        expected = pool_coinbase(self.paid_by(parent, stub), total, index, chain.prefix)["outputs"]
+        expected = pool_coinbase(self.paid_by(parent, stub, header["previous_hash"]), total, index, chain.prefix)["outputs"]
         if len(expected) != len(pool_outputs) or any(
                 {k: o.get(k) for k in STUB_KEYS + ("index", "amount", "commitment")} != {k: e[k] for k in STUB_KEYS + ("index", "amount", "commitment")}
                 for o, e in zip(pool_outputs, expected)):
-            raise PoolError("the coinbase does not pay the shares it builds on, in proportion to their work")
+            raise PoolError("the coinbase does not pay the shares the draw picked")
         return difficulty
 
     def add(self, share: dict) -> bool:
@@ -256,10 +291,11 @@ def mine_share(sharechain: ShareChain, address: str, should_abort: Optional[Call
     with sharechain.lock:
         parent = sharechain.tip
         stub = payout_stub(address, chain.prefix)
-        paid = sharechain.paid_by(parent, stub)
+        window = sharechain.window(parent, int(sharechain.rules["window"]))
         share_target = difficulty_target(sharechain.difficulty_after(parent))
 
-    def build(height, total, fund_address, fund_amount):
+    def build(height, total, fund_address, fund_amount):     # runs inside the chain's lock: takes no other lock
+        paid = paid_from(window, stub, int(sharechain.rules["paid_shares"]), parent, chain.tip["hash"])
         return pool_coinbase(paid, total, height, chain.prefix, fund_address, fund_amount)
 
     version, built = chain.mempool_version, time.time()

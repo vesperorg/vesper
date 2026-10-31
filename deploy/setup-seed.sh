@@ -47,6 +47,15 @@ if [ ! -f "$DATA/wallets/default.json" ]; then
   sudo -u vesper "$APP/venv/bin/python" coin.py --data-dir "$DATA" wallet new --password ""
 fi
 
+# A new network has a new first block: the chain saved here then belongs to the old network and
+# the node would refuse it.  Only then is the saved chain dropped; the wallet always stays.
+systemctl stop vesper-node 2>/dev/null || true
+check="$(sudo -u vesper "$APP/venv/bin/python" -c 'import sys; from chain import Blockchain, load_config; Blockchain(load_config(), sys.argv[1])' "$DATA" 2>&1 || true)"
+if echo "$check" | grep -q "does not belong"; then
+  echo "== the saved chain belongs to another network: starting this one from its first block (the wallet stays)"
+  sudo -u vesper "$APP/venv/bin/python" coin.py --data-dir "$DATA" reset-chain
+fi
+
 echo "== 5/6  the service"
 IP="$(curl -4 -s https://api.ipify.org || true)"
 if [ -z "$IP" ]; then echo "could not find this server's public address; edit vesper-node.service by hand"; IP=SERVER_IP; fi

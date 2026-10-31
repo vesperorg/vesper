@@ -75,8 +75,9 @@ class Drive:
         """The drive's own network: this coin's rules, but its own genesis block, an easy start
         and no peers, so the throwaway nodes never meet the real network and it never meets them."""
         config = {k: v for k, v in _CFG.items() if not k.startswith("_")}
-        config["consensus"] = dict(config["consensus"], network="test-drive", initial_difficulty=1024,
+        config["consensus"] = dict(config["consensus"], network="test-drive", initial_difficulty=1024, emission=None,
                                    genesis_message="Vesper test drive - two throwaway nodes on one computer")
+        config["pool"] = {"enabled": False}            # the drive pays 50 a block to one miner: its story needs no pool
         config["network"] = dict(config["network"], peers=[])
         self.config_path = os.path.join(self.dir_a, "drive_config.json")
         with open(self.config_path, "w", encoding="utf-8") as fh:

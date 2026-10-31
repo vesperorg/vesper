@@ -530,8 +530,8 @@ def cmd_info(ctx: Ctx, args) -> None:
     avg = d.get("avg_block_seconds_recent")
     print("Block time   : target %ds, recent average %s" % (d["target_block_seconds"], ("%ss" % avg) if avg is not None else "n/a"))
     print("Supply       : %s of %s max, in %d output(s); %d spent so far, and nobody can tell which" % (
-        ctx.fmt(d["circulating_supply"]), ctx.fmt(d["max_supply"]), d["output_count"], d["spend_count"]))
-    print("Next reward  : %s   (halving in %d blocks)" % (ctx.fmt(d["next_reward"]), d["blocks_until_halving"]))
+        ctx.fmt(d["circulating_supply"]), ctx.fmt(d["max_supply"]) if d["max_supply"] else "no cap: a small reward forever", d["output_count"], d["spend_count"]))
+    print("Next reward  : %s%s" % (ctx.fmt(d["next_reward"]), "" if d["blocks_until_halving"] is None else "   (halving in %d blocks)" % d["blocks_until_halving"]))
     print("Mempool      : %d waiting transaction(s)" % d["mempool_size"])
     print("Peers        : %s" % (", ".join(d["peers"]) or "none"))
     print(_miner_line(d["miner"]))

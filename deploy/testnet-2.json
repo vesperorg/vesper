@@ -1,0 +1,20 @@
+{
+  "consensus": {
+    "emission": {
+      "main_curve": "18000000",
+      "curve_shift": 22,
+      "tail_start": "0.15",
+      "tail_step": "0.01",
+      "tail_step_blocks": 6307200,
+      "tail_floor": "0.05"
+    }
+  },
+  "pool": {
+    "enabled": true,
+    "window": 360,
+    "paid_shares": 15,
+    "share_seconds": 10,
+    "initial_share_difficulty": 512,
+    "halflife_seconds": 600
+  }
+}

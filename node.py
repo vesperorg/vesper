@@ -50,7 +50,7 @@ from privacy import is_valid_address
 from relay import LOCAL, BanList, RateLimiter, StemRouter
 from wallet import Wallet
 
-VERSION = "0.9.1"
+VERSION = "0.10.0"
 PEERS_FILE = "peers.json"
 SYNC_BATCH = 100
 BRANCH_HOLD_SECONDS = 120              # a branch handed over in batches is forgotten if the next batch is this late
@@ -287,8 +287,7 @@ class Node:
             try:
                 self.sharechain = ShareChain(self.chain, {k: v for k, v in pool_rules.items() if k != "enabled"})
             except PoolError as exc:
-                raise ChainError("this network's rules do not allow pool blocks (%s). A pool runs on a network whose "
-                                 "rules set consensus.max_coinbase_outputs." % exc)
+                raise ChainError("config.json, pool: %s" % exc)
         self.shares_found = 0
         self.catching_up = threading.Event()          # set while a peer ahead of us is being caught up with
         self.first_sync_done = threading.Event()      # set once every peer has been asked
@@ -1369,7 +1368,8 @@ def main(argv=None) -> None:
     parser.add_argument("--mine-to")
     parser.add_argument("--processes", type=int, help="CPU cores to mine on (default: half the cores, at most 8)")
     parser.add_argument("--proxy", help="reach every peer through Tor or another SOCKS5 proxy, e.g. socks5h://127.0.0.1:9050")
-    parser.add_argument("--pool", action="store_true", help="mine in the pool with no operator (needs a network whose rules allow pool blocks)")
+    parser.add_argument("--pool", action="store_true", help="mine in the pool with no operator")
+    parser.add_argument("--solo", action="store_true", help="mine alone, even where config.json turns the pool on")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -1380,8 +1380,8 @@ def main(argv=None) -> None:
         sys.exit(2)
     if args.processes:
         config["mining"]["processes"] = max(1, args.processes)
-    if args.pool:
-        config.setdefault("pool", {})["enabled"] = True
+    if args.pool or args.solo:
+        config.setdefault("pool", {})["enabled"] = args.pool and not args.solo
     if args.proxy:
         config["network"]["proxy"] = args.proxy
     if config["network"].get("proxy"):

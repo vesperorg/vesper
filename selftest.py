@@ -38,7 +38,9 @@ RING = 4          # small rings keep the tests quick; the speed report uses the 
 CONFIG = deep_merge(load_config(), {"consensus": {
     "initial_difficulty": 64, "min_difficulty": 1, "difficulty_halflife_seconds": 0,     # fixed, tiny difficulty
     "output_lock_blocks": 0,                                                          # most tests spend at once
-    "ring_size": RING, "pow": {"memory_kib": 8}, "dev_fund": {"address": ""}},
+    "ring_size": RING, "pow": {"memory_kib": 8}, "dev_fund": {"address": ""},
+    "emission": None},                                                                # the tests' own 50 a block, halving
+    "pool": {"enabled": False},                                                       # pool checks turn it on themselves
     "network": {"peers": []}})                                                        # never the real seed nodes
 REAL = load_config()["consensus"]
 PREFIX = CONFIG["coin"]["address_prefix"]
@@ -1860,16 +1862,37 @@ def test_a_node_nobody_can_reach_hands_over_its_branch():
         shutil.rmtree(tmp_b, ignore_errors=True)
 
 
+def test_the_smooth_curve_and_tail_pay_what_they_promise():
+    """consensus.emission (the plan for mainnet, on test networks from testnet-2): a curve with no
+    halving day, then a tail that steps down and never ends.  Small numbers, the real rule."""
+    rules = {"main_curve": "1000", "curve_shift": 4, "tail_start": "2", "tail_step": "0.5", "tail_step_blocks": 10, "tail_floor": "1"}
+    e = new_chain(config=deep_merge(CONFIG, {"consensus": {"emission": rules}}))
+    rewards = [e.reward_at(h) for h in range(1, 400)]
+    assert rewards[0] == coins("1000") >> 4 and rewards == sorted(rewards, reverse=True), "the reward only ever goes down"
+    assert all(a - b < coins("7") for a, b in zip(rewards, rewards[1:])), "no halving day"
+    assert rewards[-1] == coins("1") and min(rewards) == coins("1"), "the tail stops at its floor and stays there"
+    assert coins("2") in rewards and coins("1.5") in rewards, "the tail steps down"
+    assert e.supply_at(399) == sum(rewards) and e.max_supply() is None, "the supply adds up, and there is no cap"
+    assert e.reward_at(37) == rewards[36] and e.reward_at(300) == rewards[299], "asking out of order changes nothing"
+    wallet = Wallet.generate(PREFIX)
+    mine(e, wallet, 3)
+    assert balance(e, wallet) == sum(rewards[:3]) and e.circulating_supply() == sum(rewards[:3]), "blocks pay the curve"
+    assert e.info()["blocks_until_halving"] is None and e.info()["max_supply"] is None
+    assert new_chain(config=deep_merge(CONFIG, {"consensus": {"emission": rules}})).blocks.hash_at(0) != new_chain().blocks.hash_at(0), \
+        "the curve is one of the rules hashed into the first block"
+    expect_error(lambda: new_chain(config=deep_merge(CONFIG, {"consensus": {"emission": dict(rules, tail_floor="3")}})), "impossible")
+
+
 def test_a_pool_with_no_operator_pays_every_member():
     """Mining together without a company in the middle (pool.py): members mine shares at an
-    easier target, every block pays the last shares in proportion to their work, straight to
-    one-time keys their own wallets made, and a share that pays anyone the wrong amount, or
-    builds on a share nobody has, is refused."""
-    from pool import PoolError, ShareChain, mine_share, split
-    config = deep_merge(CONFIG, {"consensus": {"initial_difficulty": 32, "max_coinbase_outputs": 64}})
+    easier target, every block pays a draw of the recent shares, weighted by their work, straight
+    to one-time keys their own wallets made, and a share that pays anyone the wrong amount, or
+    builds on a share nobody has, is refused.  A pool block is an ordinary block: 16 outputs at most."""
+    from pool import PoolError, ShareChain, draw, mine_share, split
+    config = deep_merge(CONFIG, {"consensus": {"initial_difficulty": 32}})
     c = new_chain(config=config)
     members = {name: Wallet.generate(PREFIX) for name in ("ana", "ben", "cal")}
-    shares = ShareChain(c, {"window": 12, "initial_share_difficulty": 4, "halflife_seconds": 0})
+    shares = ShareChain(c, {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4, "halflife_seconds": 0})
     expected, owners, names, made, found = dict.fromkeys(members, 0), {}, list(members), 0, 0
     while found < 2:
         name = names[made % 3]
@@ -1895,17 +1918,18 @@ def test_a_pool_with_no_operator_pays_every_member():
     assert tx["txid"] in c.known_txids and balance(c, carol) == coins("5"), "a pool payout must be spendable"
     share, _ = mine_share(shares, members["ana"].address)
     forged_stub = dict(share["stub"], view_tag="00" if share["stub"]["view_tag"] != "00" else "01")
-    for bad, word in ((dict(share, stub=forged_stub), "in proportion"), (dict(share, parent="ab" * 32), "unknown parent")):
+    for bad, word in ((dict(share, stub=forged_stub), "draw picked"), (dict(share, parent="ab" * 32), "unknown parent")):
         try:
             shares.check(bad)
             raise AssertionError("a bad share was accepted")
         except PoolError as exc:
             assert word in str(exc), str(exc)
     assert split(10, [1, 1, 1]) == [3, 3, 4]
-    assert c.max_coinbase_outputs == 64 and new_chain().max_coinbase_outputs == 16, "testnet-1 keeps 16 (its genesis is unchanged)"
+    won = draw([("light", 1), ("heavy", 3)], 4000, b"seed")          # the draw follows the work: 1 to 3, give or take
+    assert sum(won) == 4000 and 850 < won[0] < 1150 and draw([("a", 1), ("b", 1)], 8, b"x") == draw([("a", 1), ("b", 1)], 8, b"x")
     # between nodes (node.py --pool): a node that missed the shares a share builds on is handed them
     from node import Node
-    pool_config = deep_merge(config, {"pool": {"enabled": True, "window": 12, "initial_share_difficulty": 4, "halflife_seconds": 0}})
+    pool_config = deep_merge(config, {"pool": {"enabled": True, "window": 12, "paid_shares": 15, "initial_share_difficulty": 4, "halflife_seconds": 0}})
     tmp_a, tmp_b = tempfile.mkdtemp(prefix="vesper-test-"), tempfile.mkdtemp(prefix="vesper-test-")
     try:
         seed = Node(pool_config, tmp_a, "127.0.0.1", 0, [], None, public_url="http://8.8.4.4:8880")
@@ -1924,8 +1948,8 @@ def test_a_pool_with_no_operator_pays_every_member():
         second, _ = mine_share(home.sharechain, members["ben"].address)
         home.on_share_mined(second, None)                              # ... so this one does not fit, and both are handed over
         assert seed.sharechain.tip == home.sharechain.tip and len(seed.sharechain.shares) == 2
-        expect_error(lambda: Node(deep_merge(CONFIG, {"pool": {"enabled": True}}), tmp_a + "x",
-                                  "127.0.0.1", 0, [], None), "do not allow pool blocks")
+        expect_error(lambda: Node(deep_merge(CONFIG, {"pool": {"enabled": True, "paid_shares": 16}}), tmp_a + "x",
+                                  "127.0.0.1", 0, [], None), "config.json, pool")
     finally:
         shutil.rmtree(tmp_a, ignore_errors=True)
         shutil.rmtree(tmp_b, ignore_errors=True)
@@ -2294,6 +2318,7 @@ TESTS = [
     test_phase4_one_peer_cannot_fill_the_peer_table,
     test_a_node_nobody_can_reach_hands_over_its_branch,
     test_a_pool_with_no_operator_pays_every_member,
+    test_the_smooth_curve_and_tail_pay_what_they_promise,
     test_phase4_peers_can_be_reached_through_tor,
     test_phase4_silent_connections_cannot_lock_the_node,
     test_phase4_leak_measurement,

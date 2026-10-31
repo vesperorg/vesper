@@ -101,7 +101,7 @@
     $("height").textContent=d.height.toLocaleString(); $("tipAge").textContent=d.height?"last block "+ago(d.tip_timestamp):"only the genesis block so far";
     $("difficulty").textContent=d.difficulty.toLocaleString(); $("diffNext").textContent="tries per block ("+(d.pow?d.pow.algorithm:"")+"), next "+d.next_difficulty.toLocaleString();
     $("blockTime").textContent=d.avg_block_seconds_recent==null?"-":d.avg_block_seconds_recent+"s"; $("blockTarget").textContent="target "+d.target_block_seconds+"s, recent average";
-    $("supply").textContent=fmt(d.circulating_supply); $("supplyMax").textContent="of "+fmt(d.max_supply)+" max";
+    $("supply").textContent=fmt(d.circulating_supply); $("supplyMax").textContent=d.max_supply?"of "+fmt(d.max_supply)+" max":"no cap: a small reward forever";
     $("utxos").textContent=d.output_count.toLocaleString(); $("spends").textContent=d.spend_count.toLocaleString()+" spent - nobody can tell which"; $("ringNote").textContent=d.ring_size; $("lockNote").textContent=d.output_lock_blocks; $("mempoolCount").textContent=d.mempool_size;
     var m=d.miner; $("minerState").innerHTML=m.running?'<span class="good">running</span>':'<span class="muted">stopped</span>';
     $("minerRate").textContent=m.running?m.hashrate.toLocaleString()+" tries/s, "+m.blocks_found+" found":(d.reward_address?"rewards -> "+short(d.reward_address,16):"no wallet yet - run wallet.bat");
