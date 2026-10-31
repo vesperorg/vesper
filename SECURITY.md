@@ -13,5 +13,5 @@ hear from you first and privately.
 Out of scope: items on the published leak list, phishing a wallet file, compromising a user's
 machine, and denial of service against the unhardened test node (it is not internet-ready yet).
 
-The bounty pool and payment rules are on the Join page and become final when the public
-testnet opens. Nothing here is a promise of payment before that.
+The bounty pool is $1,000, funded by the founder and paid in Monero. The tiers and payment rules
+are on the Join page.

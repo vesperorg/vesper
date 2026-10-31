@@ -98,8 +98,8 @@ replay a payment, mistype an address, spend with a view key, edit the chain file
 - Ran a node? Open an issue titled **"founding node"** with your handle to be listed on the
   founding-node roll.
 - Found a weakness? Read `SECURITY.md`: open an issue titled "security: contact requested" with no
-  details, and a private channel is arranged from there. Credit is public; the bounty pool's amount is not
-  yet set.
+  details, and a private channel is arranged from there. Credit is public; the bounty pool is
+  $1,000, paid in Monero (tiers on the Join page).
 - Something on a page did not match what your computer did? That is a bug in the page or the code,
   and we want to know which. Open an issue.
 
