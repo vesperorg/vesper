@@ -164,7 +164,7 @@ A privacy-coin community treats any pre-launch allocation as a sign the coin exi
 | Proof of work | Argon2id 32 MiB | RandomX likely | closes the GPU gap; needs a C library |
 | Development fund | 10% for 4,204,800 blocks | as decided | capped, public, ends |
 | Burning | none | none | not provable on a private chain without glass-box outputs, and it starves miners |
-| Mining pools | none | DECIDED 27 October 2026: one pool with no operator, built into the node after Monero's P2Pool (share chain, last ~2,160 shares paid straight to members' wallets at one-time keys, members build their own blocks); the only pool the software supports | an operator pool builds every block, holds payouts and learns every member's address; the protocol cannot forbid one, so "only" means built-in and supported; needs a coinbase with hundreds of outputs (16 today), which changes block 0 |
+| Mining pools | none | DECIDED 27 October 2026: one pool with no operator, built into the node after Monero's P2Pool (share chain, each block pays 15 slots straight to wallets at one-time keys: the finding share plus 14 drawn from the last 360 shares by work, members build their own blocks); the only pool the software supports | an operator pool builds every block, holds payouts and learns every member's address; the protocol cannot forbid one, so "only" means built-in and supported; a pool block stays within the normal 16 reward outputs |
 
 These go in the code, so they are agreed with the code session and published with the genesis block, never before.
 
