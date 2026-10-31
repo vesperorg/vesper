@@ -1,6 +1,6 @@
 Fingerprints (sha256) of the public documents. The first public commit on GitHub dates them; the private working history is not published.
-aa28f03522fe20a23e12f91db77438cb6847259644b32f40d816629451b51112 *README.md
+64936166d34a6abf1c1f2aec1c8affc92311599c38d4eff084f67349492781cd *README.md
 57a92c2a9ba829a485fd146cb9391eaa564fcdf80a8e47e95793f11875712f53 *site/whitepaper.html
 2310c207501fd258296c581007ff97325af55b0263db60831fc917db29dc6d99 *docs/Cryptocurrency - The Complete Walkthrough.md
 36a52dcbf44327b6126eb580d08d1ec57f510f612e18a7e2f78030815ca8e812 *docs/PUBLISH_CHECKLIST.md
-3916b467394a6ff798fb6747b71cd1e0cec360ed3a5b1bc4d9a679db2c67468b *docs/Vesper - The Complete Walkthrough.md
+65a3cae48fa820413d817ede590e679fdaaadea184faa1337e0f3d5d5c31af2c *docs/Vesper - The Complete Walkthrough.md
