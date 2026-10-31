@@ -3,4 +3,4 @@ Fingerprints (sha256) of the public documents. The first public commit on GitHub
 57a92c2a9ba829a485fd146cb9391eaa564fcdf80a8e47e95793f11875712f53 *site/whitepaper.html
 2310c207501fd258296c581007ff97325af55b0263db60831fc917db29dc6d99 *docs/Cryptocurrency - The Complete Walkthrough.md
 36a52dcbf44327b6126eb580d08d1ec57f510f612e18a7e2f78030815ca8e812 *docs/PUBLISH_CHECKLIST.md
-65a3cae48fa820413d817ede590e679fdaaadea184faa1337e0f3d5d5c31af2c *docs/Vesper - The Complete Walkthrough.md
+44c1655ab06233d41dc9d3c6510af0293695d96753bc1e5bb19f431a62b3ef78 *docs/Vesper - The Complete Walkthrough.md

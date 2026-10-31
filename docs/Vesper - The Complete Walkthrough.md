@@ -139,7 +139,7 @@ Recorded on node v0.9.0 at testnet-1 settings on 19 October 2026 by `python test
 
 ## 6.1 The rules, enforced by code
 
-1. Zero coins before block 1. The genesis block is computed from the published rules and contains no outputs. No allocation before launch, no treasury, no presale, ever. Founders and early contributors can be paid only after launch, from the development fund, in public (planned: one tenth of the fund in its first year).
+1. Zero coins before block 1. The genesis block is computed from the published rules and contains no outputs. No allocation before launch, no treasury, no presale, ever. Founders and early contributors can be paid only after launch, from the development fund, in public (planned: the early supporters share, 1% of all VESP mined in the first two years, paid after those two years).
 2. Anyone mines from block 1 with the same software everyone downloads.
 3. 10% of each block reward to the development fund for 4,204,800 blocks, then 0% forever. Fees never included.
 4. Every fund payment is auditable, and the fund's own spending is public on chain.
