@@ -95,8 +95,8 @@ replay a payment, mistype an address, spend with a view key, edit the chain file
 
 ## 9. Tell us
 
-- Ran a node? Open an issue titled **"founding node"** with your handle to be listed on the
-  founding-node roll.
+- Ran a node, found a bug or contributed? Open an issue titled **"hall of fame"** with your handle
+  and what you did, to be listed in the hall of fame.
 - Found a weakness? Read `SECURITY.md`: open an issue titled "security: contact requested" with no
   details, and a private channel is arranged from there. Credit is public; the bounty pool is
   $1,000, paid in Monero (tiers on the Join page).
