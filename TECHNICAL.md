@@ -278,8 +278,12 @@ its own.
 
 Between nodes, a share is handed to peers like a block (`POST /api/pool/share`); when a peer lacks
 the shares it builds on, those follow, so a member behind a home router or Tor takes part like any
-other. Each sync round fetches peers' recent shares (`GET /api/pool/chain`). `/api/info` shows the
-pool. Measured on two nodes for three minutes, paying every share in a 30-share window: 70 shares,
+other. Each sync round fetches peers' recent shares (`GET /api/pool/chain`). A member that joins
+late takes the last two windows of the chain: the first window on its proof of work, every share
+after it checked in full, and only the work it has seen counted, so a peer cannot talk a chain up.
+A share that builds on a main block a peer lacks is a difference of timing, not a broken rule, and
+costs nothing; a tie between two shares goes to the lower ID, so members agree without waiting.
+`/api/info` shows the pool. Measured on two nodes for three minutes, paying every share in a 30-share window: 70 shares,
 9 blocks, both on the same share and block, wallets paid 260.67 and 189.33 of 450 for 40 and 30
 shares; with the 15-slot draw and the real curve, 65 shares, 3 blocks, 32 outputs in all, and the
 payouts add up to the three rewards to the last unit. Three blocks is too few to show the share of

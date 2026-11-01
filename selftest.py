@@ -1890,6 +1890,14 @@ def test_a_pool_with_no_operator_pays_every_member():
     builds on a share nobody has, is refused.  A pool block is an ordinary block: 16 outputs at most."""
     from pool import PoolError, ShareChain, draw, mine_share, split
     config = deep_merge(CONFIG, {"consensus": {"initial_difficulty": 32}})
+    moving = new_chain(config=config)                          # joining where the share difficulty moves
+    rules = {"window": 6, "paid_shares": 5, "initial_share_difficulty": 2, "halflife_seconds": 600}
+    fast = ShareChain(moving, rules)
+    for _ in range(14):
+        fast.add(mine_share(fast, Wallet.generate(PREFIX).address)[0])
+    joiner = ShareChain(moving, rules)
+    assert joiner.join(*fast.segment(13)) == 13 and joiner.tip == fast.tip
+    fast.check(mine_share(joiner, Wallet.generate(PREFIX).address)[0])
     c = new_chain(config=config)
     members = {name: Wallet.generate(PREFIX) for name in ("ana", "ben", "cal")}
     shares = ShareChain(c, {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4, "halflife_seconds": 0})
@@ -1948,6 +1956,43 @@ def test_a_pool_with_no_operator_pays_every_member():
         second, _ = mine_share(home.sharechain, members["ben"].address)
         home.on_share_mined(second, None)                              # ... so this one does not fit, and both are handed over
         assert seed.sharechain.tip == home.sharechain.tip and len(seed.sharechain.shares) == 2
+        # a member ahead of us on the main chain breaks no rule: its share just does not fit yet
+        from pool import ShareNotYet
+        ahead, block = None, None
+        while block is None:
+            ahead, block = mine_share(home.sharechain, members["ben"].address)
+            home.sharechain.add(ahead)
+        home.chain.add_block(block)
+        ahead, _ = mine_share(home.sharechain, members["ben"].address)
+        home.sharechain.add(ahead)
+        try:
+            seed.receive_share(ahead)
+            raise AssertionError("a share on a block the seed does not have was accepted")
+        except ShareNotYet:
+            pass
+        # a member that joins late takes the whole chain, however old its main blocks are
+        tmp_c = tempfile.mkdtemp(prefix="vesper-test-")
+        try:
+            late = Node(pool_config, tmp_c, "127.0.0.1", 0, [], None, public_url="http://8.8.8.4:8880")
+            mine(late.chain, Wallet.generate(PREFIX), 6)               # its chain has moved far past them
+            while len(home.sharechain.shares) < 30:                    # and the chain is longer than it will fetch
+                more, _ = mine_share(home.sharechain, members["ben"].address)
+                home.sharechain.add(more)
+            shares, difficulties = home.sharechain.segment(24)
+            joined = late.receive_shares(json.loads(json.dumps(shares)), difficulties)
+            assert joined["tip"] == home.sharechain.tip, "a member can join a chain of any length"
+            assert late.receive_shares(shares[-12:], difficulties[-12:])["added"] == 0, "nothing new"
+            assert late.sharechain.join(shares[:6], difficulties[:6]) == 0, "a segment shorter than a window is no way in"
+            lower = dict(zip(("shares", "difficulties"), home.sharechain.segment(24)))
+            expect_error(lambda: ShareChain(new_chain(config=config), {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4,
+                                                                       "halflife_seconds": 0}).join(lower["shares"], [10 ** 9] * 24), "not enough work")
+            # and what it mines on that chain is good on everyone else's: the draw comes out the same
+            late.chain = home.chain
+            late.sharechain.chain = home.chain
+            next_share, _ = mine_share(late.sharechain, members["cal"].address)
+            home.sharechain.check(next_share)
+        finally:
+            shutil.rmtree(tmp_c, ignore_errors=True)
         expect_error(lambda: Node(deep_merge(CONFIG, {"pool": {"enabled": True, "paid_shares": 16}}), tmp_a + "x",
                                   "127.0.0.1", 0, [], None), "config.json, pool")
     finally:

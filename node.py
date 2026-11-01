@@ -44,13 +44,13 @@ from chain import (BLOCK_KEYS, HERE, MAX_LOOKUP, Blockchain, ChainError, compute
                    load_config, lock_data_dir, resolve_data_dir)
 import socket
 import socksproxy
-from pool import PoolError, ShareChain, mine_share
+from pool import PoolError, ShareChain, ShareNotYet, mine_share
 from powpool import PowPool, default_processes
 from privacy import is_valid_address
 from relay import LOCAL, BanList, RateLimiter, StemRouter
 from wallet import Wallet
 
-VERSION = "0.10.0"
+VERSION = "0.10.1"
 PEERS_FILE = "peers.json"
 SYNC_BATCH = 100
 BRANCH_HOLD_SECONDS = 120              # a branch handed over in batches is forgotten if the next batch is this late
@@ -658,15 +658,14 @@ class Node:
         log.info("SHARE %d  difficulty %d  pays %d share(s)%s", self.sharechain.meta[compute_block_hash(share["header"])]["height"],
                  self.sharechain.meta[compute_block_hash(share["header"])]["difficulty"], len(share["coinbase"]["outputs"]),
                  "  - and it is a BLOCK" if block else "")
-        for peer in list(self.peers):
-            self.spawn(self._push_share, peer, share)
-        if block is not None:
+        if block is not None:                             # the block first: a share is only placed on blocks a peer has
             try:
                 self.chain.add_block(block)
+                self.on_block_mined(block)
             except ChainError as exc:
                 log.info("pool block %d came too late: %s", block["index"], exc)
-                return
-            self.on_block_mined(block)
+        for peer in list(self.peers):
+            self.spawn(self._push_share, peer, share)
 
     def _push_share(self, peer: str, share: dict) -> None:
         """Hand a share to a peer; if the peer lacks the shares it builds on, hand those over too
@@ -674,9 +673,13 @@ class Node:
         try:
             self._request(peer, "POST", "/api/pool/share", share, 30)
         except Exception as exc:
-            if "unknown parent" in str(exc) or "409" in str(exc):
+            if isinstance(exc, ShareNotYet) or "409" in str(exc):
                 try:
-                    self._request(peer, "POST", "/api/pool/shares", {"shares": self.sharechain.recent(int(self.sharechain.rules["window"]))}, 60)
+                    for n in (30, 2 * int(self.sharechain.rules["window"])):   # a few may do; a member far behind needs two windows
+                        shares, difficulties = self.sharechain.segment(n)
+                        answer = self._request(peer, "POST", "/api/pool/shares", {"shares": shares, "difficulties": difficulties}, 120)
+                        if answer.get("added"):
+                            break
                 except Exception as more:
                     log.debug("handing shares to %s failed: %s", peer, more)
             else:
@@ -701,29 +704,40 @@ class Node:
                 self.spawn(self._push_share, peer, share)
         return new_tip
 
-    def receive_shares(self, shares) -> dict:
+    def receive_shares(self, shares, difficulties=None) -> dict:
         """Several shares, oldest first (a member catching this node up).  Ones it has, and ones
-        that do not fit, are skipped; the first that breaks a rule ends it."""
+        that do not fit, are skipped; the first that breaks a rule ends it.  With `difficulties`, a
+        long segment whose start this node does not know is a chain it can join (ShareChain.join)."""
         if self.sharechain is None:
             raise Refused(404, "this node is not in a pool")
         if not isinstance(shares, list) or len(shares) > 2 * int(self.sharechain.rules["window"]):
             raise PoolError("send at most %d shares at a time" % (2 * int(self.sharechain.rules["window"])))
+        first = shares[0] if shares and isinstance(shares[0], dict) else {}
+        if isinstance(difficulties, list) and first.get("parent") is not None and first.get("parent") not in self.sharechain.meta:
+            return {"added": self.sharechain.join(shares, difficulties), "tip": self.sharechain.tip}
         added = 0
         for share in shares:
             try:
-                self.sharechain.add(share)
-                added += 1
-            except PoolError as exc:
-                if "unknown parent" not in str(exc) and "too old" not in str(exc):
-                    raise
+                if not isinstance(share, dict) or not isinstance(share.get("header"), dict):
+                    raise PoolError("malformed share")
+                if compute_block_hash(share["header"]) not in self.sharechain.shares:
+                    self.sharechain.add(share, history=True)
+                    added += 1
+            except ShareNotYet:
+                pass
         return {"added": added, "tip": self.sharechain.tip}
 
     def sync_shares(self, peer: str) -> None:
         if self.sharechain is None:
             return
         try:
-            shares = self._get(peer, "/api/pool/chain?limit=%d" % int(self.sharechain.rules["window"]), timeout=30).get("shares", [])
-            self.receive_shares(shares if isinstance(shares, list) else [])
+            tip = self._get(peer, "/api/pool", timeout=30).get("tip")
+            for limit in (30, 2 * int(self.sharechain.rules["window"])):     # a few may do; joining takes two windows
+                if not tip or tip in self.sharechain.meta:
+                    return
+                got = self._get(peer, "/api/pool/chain?limit=%d" % limit, timeout=120)
+                shares = got.get("shares")
+                self.receive_shares(shares if isinstance(shares, list) else [], got.get("difficulties"))
         except Exception as exc:
             log.debug("fetching shares from %s failed: %s", peer, exc)
 
@@ -1224,7 +1238,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(node.sharechain.status())
                 if route == ["pool", "chain"]:
                     limit = max(1, min(2 * int(node.sharechain.rules["window"]), int(query.get("limit", ["60"])[0])))
-                    return self._json({"shares": node.sharechain.recent(limit)})
+                    shares, difficulties = node.sharechain.segment(limit)
+                    return self._json({"shares": shares, "difficulties": difficulties})
             if len(route) == 2 and route[0] == "address":
                 return self._error(404, "there are no addresses on this chain to look up - that is the point. Scan with your view key instead.")
             return self._error(404, "not found")
@@ -1288,10 +1303,10 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     if route == ["pool", "share"]:
                         return self._json({"accepted": node.receive_share(body, sender)})
-                    return self._json(node.receive_shares(body.get("shares")))
-                except PoolError as exc:
-                    if "unknown parent" in str(exc):
-                        return self._error(409, str(exc))
+                    return self._json(node.receive_shares(body.get("shares"), body.get("difficulties")))
+                except ShareNotYet as exc:            # a difference of timing: being ahead of us is not cheating
+                    return self._error(409, str(exc))
+                except PoolError:
                     node.penalise(client_ip, 20, local, "shares that break the pool's rules")
                     raise
             if route == ["branch"]:                   # a peer we cannot reach hands us its side of the chain
