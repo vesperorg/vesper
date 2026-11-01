@@ -1,5 +1,7 @@
 # Vesper
 
+***As private as cash, as global as the internet.***
+
 [![self-test](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml/badge.svg)](https://github.com/vesperorg/vesper/actions/workflows/selftest.yml) Code: https://github.com/vesperorg/vesper - Site: https://vesperorg.github.io/vesper/
 
 **Vesper is a privacy cryptocurrency on its own new blockchain (not a token on someone else's),
