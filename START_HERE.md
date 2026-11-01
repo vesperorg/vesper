@@ -1,7 +1,7 @@
 # Start here: test Vesper yourself in about 15 minutes
 
 No experience needed. These are Windows steps; Mac and Linux are at the end. Nothing here costs
-anything and nothing here is worth anything: testnet-1 coins (tVESP) are test coins, forever.
+anything and nothing here is worth anything: testnet-2 coins (tVESP) are test coins, forever.
 
 ## 1. Install Python (once)
 
@@ -36,7 +36,7 @@ with **"14 of 14 checks behaved as the test drive page says."** and deletes its 
 test-drive page on the site walks through the same output line by line:
 https://vesperorg.github.io/vesper/testdrive.html
 
-## 4. Run the 46 checks (2 minutes)
+## 4. Run the 47 checks (2 minutes)
 
 Double-click **`selftest.bat`**. It tries to double-spend, forge signatures, print coins four ways,
 rewrite history and cheat the development fund, and confirms that no address, amount or spent coin
@@ -67,7 +67,7 @@ there are no addresses on the chain.
 Run **`wallet.bat`** again any time to see your balance, or leave the wallet app open; it refreshes itself. A new coin can be spent 10 blocks after
 it arrives, about 5 minutes.
 
-Your node finds the rest of testnet-1 through the seed node listed in `config.json`, so within a
+Your node finds the rest of testnet-2 through the seed node listed in `config.json`, so within a
 minute or two the explorer shows the network's blocks, not just yours. To add a friend's node as
 well, start yours with `python node.py --peer http://THEIR-ADDRESS:8880 --mine`.
 

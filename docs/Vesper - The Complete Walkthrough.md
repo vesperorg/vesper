@@ -8,7 +8,7 @@ This is the complete picture of Vesper as it stands on 18 October 2026, the day 
 
 ## 1.1 What exists
 
-- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 46-check self-test that passes (node v0.9.1).
+- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 47-check self-test that passes (node v0.10.0).
 - Testnet-1, decided 18 October 2026: a public test network with test coins (tVESP, addresses start `tvsp2`, no value ever), ring size 48 (raised from 32 on 19 October, three times Monero's), a genesis block tied to the newest Bitcoin block at launch, and a seed node on a rented server (kit in `deploy/`).
 - Four privacy layers built and tested: hidden receivers (stealth addresses, as many per wallet as you like, and view keys), hidden amounts (commitments and one range proof per payment), hidden senders (rings of 48 with decoys drawn from measured spending, and key images), and network privacy (a payment travels node to node before any node broadcasts it, with the remaining leak measured by `leaktest.py` rather than claimed away).
 - Payment proofs, wallet recovery codes, Tor through one flag, per-address limits and a peer table built for strangers.
@@ -110,8 +110,8 @@ With the demo settings (30-second blocks, 200 payments per block) the chain move
 ## 5.1 First run
 
 1. `selftest.bat`: 44 checks, all should pass.
-2. `wallet.bat`: creates your wallet, two secret numbers behind one password, and shows your `tvsp2...` testnet-1 address and a 55-character recovery code. Write the code on paper: it is the wallet (`python coin.py wallet restore` rebuilds it on any computer), and anyone who sees it can spend. The file is `data\wallets\default.json`. There is no password reset.
-3. `start_node.bat`: node, explorer and miner at http://127.0.0.1:8880, mining to your wallet on half your cores. It joins testnet-1 through the seed node listed in `config.json` once that address is in; until then it runs a chain of its own.
+2. `wallet.bat`: creates your wallet, two secret numbers behind one password, and shows your `tvsp2...` testnet-2 address and a 55-character recovery code. Write the code on paper: it is the wallet (`python coin.py wallet restore` rebuilds it on any computer), and anyone who sees it can spend. The file is `data\wallets\default.json`. There is no password reset.
+3. `start_node.bat`: node, explorer and miner at http://127.0.0.1:8880, mining to your wallet on half your cores. It joins testnet-2 through the seed node listed in `config.json` once that address is in; until then it runs a chain of its own.
 4. `explorer.bat`: watch blocks arrive. Payments show as sealed amounts to one-time keys. There is no address search because the chain has no addresses.
 5. `wallet.bat` again: your balance, found by reading the blocks it has not seen yet and opening the outputs that are yours.
 6. `testdrive.bat`: the whole test drive by itself on two throwaway nodes, a payment each way, a search of the raw chain, five break-it attempts, about five minutes; nothing of yours is touched.
@@ -186,7 +186,7 @@ No date is published because none of these has a fixed duration, and a date with
 | Phase 4 and first node hardening | done, 15 October 2026 | leak measured and published; the open internet is still untested |
 | Code public on GitHub | done, 18 October 2026 | the dated public record |
 | Stage two research decision | months; may not be ready for genesis | whether a proof system fits the speed budget |
-| Testnet-1 | open: code public 19 October 2026, first seed node live 23 October 2026 at http://207.148.85.83:8880 | node runners, the bounty pool, a second seed node on another provider for resilience |
+| Testnet-2 | open since 1 November 2026 at http://207.148.85.83:8880; testnet-1 ran 23 October to 1 November | node runners, the bounty pool, a second seed node on another provider for resilience |
 | Audit | 2 to 4 months once funded and scheduled | funding (see chapter 9), firm availability |
 | Hardened node | months, in parallel with the audit | a developer or two, paid from somewhere |
 | Legal entity and advice | weeks to set up, once started | you, a lawyer, a few thousand dollars |
@@ -204,7 +204,7 @@ If you need a number in your own head, July 2027 is the earliest I would call ho
 4. Fund the audit: $30,000 to $100,000 depending on scope. Your own money, a public donation drive for exactly this (the Monero way, every payment public), or a narrowly scoped first audit of the privacy math with a fuller one paid by the fund after launch.
 5. Run `devfund init` before any real genesis so the fund address is in the rules; keep that wallet and your own wallet backed up offline, encrypted, in two places.
 6. Keep the GitHub repository public and current under the Vesper organisation; the commit history is what lets anyone outside trust the code, and it is the proof of who was first.
-7. Keep the seed server current: after each pushed code change, log in and re-run `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` (it re-runs the 46 checks before restarting the node). When there are a few outside node runners, add a second seed on a different provider so the network survives one server dying; it is optional until then.
+7. Keep the seed server current: after each pushed code change, log in and re-run `sudo bash /opt/vesper/deploy/setup-seed.sh https://github.com/vesperorg/vesper` (it re-runs the 47 checks before restarting the node). When there are a few outside node runners, add a second seed on a different provider so the network survives one server dying; it is optional until then.
 8. Mine from block 1 with every machine you can, and disclose it. A line on the launch page that says the founder mines and roughly what share he holds turns the biggest suspicion about new coins into a non-story.
 9. Keep every public sentence about what Vesper does for someone's privacy, never about what it will be worth.
 

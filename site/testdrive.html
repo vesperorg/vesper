@@ -71,7 +71,7 @@
   <div class="paper">
     <div class="eyebrow">Vesper &middot; VESP &middot; hands-on</div>
     <h1>Send a private payment to another person, and see what everyone else sees.</h1>
-    <div class="meta">Real output from a run on 19 October 2026 on node v0.9.0 with phases 1 to 4 active (ring size 48, testnet-1 settings), two nodes on one PC. Your numbers will differ; the shape will not.</div>
+    <div class="meta">Real output from a run on 19 October 2026 on node v0.9.0 with phases 1 to 4 active (ring size 48), two nodes on one PC, and run again on node v0.10.0 on 31 October 2026 with the same steps and result. Your numbers will differ; the shape will not.</div>
     <p>This is the test to run before trusting a word on the other pages. Two wallets, two nodes, one payment each way, then four viewpoints: the sender, the receiver, the receiver's accountant holding only a view key, and a stranger reading the raw chain file. At the end you try to break it.</p>
 
     <h2>Setup, about five minutes</h2>
@@ -82,8 +82,8 @@ start_node.bat                  (node + explorer at http://127.0.0.1:8880, minin
     <div class="lab">Bob: his own wallet and node 2</div>
 <pre class="cmd">python coin.py --data-dir data2 wallet new
 start_node2.bat                 (node 2 at http://127.0.0.1:8881, peer of node 1, does not mine)</pre>
-    <p>Bob's commands always carry <code>--node http://127.0.0.1:8881 --data-dir data2</code>. Alice's carry nothing. Keep both node windows open; they are the network. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a brand-new chain refuses its first payment until 48 such coins exist: about 58 blocks, fifteen to thirty minutes of mining. The wallet tells you plainly when a coin is "not yet 10 blocks old." If your nodes are on testnet-1 instead of a chain of their own, the coins already exist and you skip the wait.</p>
-    <div class="note">Recorded on node v0.9.0 (44 self-test checks) on 19 October 2026 by <code>python testdrive.py</code>, which runs exactly these steps on two throwaway nodes with a throwaway network of their own (it says "test-drive" where your nodes say "testnet-1"); its folder and port names are shown below as they are in the setup above. Long keys and identifiers are trimmed; block numbers and balances depend on the run and will differ on yours. Test coins are tVESP and worth nothing.</div>
+    <p>Bob's commands always carry <code>--node http://127.0.0.1:8881 --data-dir data2</code>. Alice's carry nothing. Keep both node windows open; they are the network. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a brand-new chain refuses its first payment until 48 such coins exist: about 58 blocks, fifteen to thirty minutes of mining. The wallet tells you plainly when a coin is "not yet 10 blocks old." If your nodes are on testnet-2 instead of a chain of their own, the coins already exist and you skip the wait.</p>
+    <div class="note">Recorded on node v0.9.0 on 19 October 2026 and re-run on node v0.10.0 (47 self-test checks) on 31 October 2026 by <code>python testdrive.py</code>, which runs exactly these steps on two throwaway nodes with a throwaway network of their own (it says "test-drive" where your nodes say "testnet-2"); its folder and port names are shown below as they are in the setup above. Long keys and identifiers are trimmed; block numbers and balances depend on the run and will differ on yours. Test coins are tVESP and worth nothing.</div>
     <div class="note">Two real computers on the same Wi-Fi: Alice starts her node with <code>python node.py --host 0.0.0.0 --mine</code>, finds her PC's address with <code>ipconfig</code>, and Bob starts his with <code>python node.py --peer http://ALICES-IP:8880</code>. The nodes talk plain HTTP with no authentication; they now have per-address limits and bans, but they have never met strangers, so keep this to your own network until the public testnet. Do not want to type any of this? <code>testdrive.bat</code> runs the whole test on two throwaway nodes by itself, about five minutes, and deletes its folders afterwards.</div>
 
     <h2>The test</h2>
@@ -233,7 +233,7 @@ Chain OK: 70 blocks (height 69), 71 transactions, 73 outputs, 2 spends, chain wo
     </div>
     <div class="note good">When you can answer all six questions out loud, you can defend Vesper to anyone. When you find one you can't, that is the next thing we work on.</div>
 
-    <footer>Vesper test drive, October 2026. Output recorded by <code>testdrive.py</code> from a real two-node run on node v0.9.0 at testnet-1 settings (19 October 2026), which ended "14 of 14 checks behaved as the test drive page says"; shortened only by trimming long keys and identifiers and by showing its throwaway folder and ports under the names used above.</footer>
+    <footer>Vesper test drive, October 2026. Output recorded by <code>testdrive.py</code> from a real two-node run on node v0.9.0 (19 October 2026), repeated on node v0.10.0 (31 October 2026), each of which ended "14 of 14 checks behaved as the test drive page says"; shortened only by trimming long keys and identifiers and by showing its throwaway folder and ports under the names used above.</footer>
   </div>
 </div>
 
