@@ -46,8 +46,8 @@ is readable on the chain. All 47 should pass. If one does not, that is worth rep
 
 ## 5. Make your wallet
 
-Double-click **`wallet.bat`**. Choose a password and type it when asked (do not leave it empty:
-an empty password saves the wallet unencrypted). It shows your address (it starts with `tvsp`)
+Double-click **`wallet.bat`**. Choose a password and type it when asked (if you press Enter with no
+password it asks you to type NONE before it will save the wallet unencrypted; do not). It shows your address (it starts with `tvsp`)
 and a 55-character **recovery code**. Write the code on paper and keep it somewhere safe: the code
 is the wallet. Anyone who sees it can spend your coins; if you lose it and your computer, the coins
 are gone. Nobody can reset it.
@@ -62,12 +62,13 @@ who want to see exactly what happens.
 ## 6. Run a node and mine test coins
 
 Double-click **`start_node.bat`** and leave the window open. Your node is now part of the network
-and mines tVESP to your wallet. Double-click **`explorer.bat`** to watch blocks arrive in your
+and mines tVESP to your wallet in the built-in pool, so coins arrive in small amounts every few
+minutes instead of a whole block now and then (`python node.py --mine --solo` mines alone). Double-click **`explorer.bat`** to watch blocks arrive in your
 browser: payments show as sealed amounts to one-time keys, and there is no address search because
 there are no addresses on the chain.
 
-Run **`wallet.bat`** again any time to see your balance, or leave the wallet app open; it refreshes itself. A new coin can be spent 10 blocks after
-it arrives, about 5 minutes.
+Run **`wallet.bat`** again any time to see your balance, or leave the wallet app open; it
+refreshes itself. A new coin can be spent 10 blocks after it arrives, about 5 minutes.
 
 Your node finds the rest of testnet-2 through the seed node listed in `config.json`, so within a
 minute or two the explorer shows the network's blocks, not just yours. To add a friend's node as
@@ -83,8 +84,8 @@ python coin.py send tvsp2THEIRADDRESS 1
 
 In the wallet app: **Send**, paste the address, type the amount, **Review**, **Send now**.
 
-The terminal's output tells you what was written to the chain (no address, no amount, no spent coin) and that
-your node handed the payment quietly to one peer instead of announcing it. Give each person who pays
+The terminal's output tells you what was written to the chain (no address, no amount, no spent
+coin) and that your node handed the payment quietly to one peer instead of announcing it. Give each person who pays
 you their own address with `python coin.py wallet new-address --label NAME`; nobody can tell the
 addresses belong together.
 
