@@ -18,12 +18,14 @@ anything and nothing here is worth anything: testnet-2 coins (tVESP) are test co
    right-click, then "Open PowerShell window here"). Type:
 
 ```
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
-That installs the two small libraries Vesper uses. It takes under a minute.
+That installs the two small libraries Vesper uses. It takes under a minute. If a window later
+says "No module named nacl" or "No module named cryptography", run that line again: it means a
+second Python on your computer is the one the .bat files use.
 
-## 3. Watch the whole thing work, hands off (5 minutes)
+## 3. Watch the whole thing work, hands off (10 to 15 minutes)
 
 Double-click **`testdrive.bat`**.
 
@@ -40,7 +42,7 @@ https://vesperorg.github.io/vesper/testdrive.html
 
 Double-click **`selftest.bat`**. It tries to double-spend, forge signatures, print coins four ways,
 rewrite history and cheat the development fund, and confirms that no address, amount or spent coin
-is readable on the chain. All 45 should pass. If one does not, that is worth reporting (step 9).
+is readable on the chain. All 47 should pass. If one does not, that is worth reporting (step 9).
 
 ## 5. Make your wallet
 

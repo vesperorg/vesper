@@ -324,14 +324,14 @@
     <div class="measure">
       <div class="eyebrow">Run it</div>
       <h2>Ten minutes on your own PC.</h2>
-      <p>Python 3.10 or newer and <code>pip install -r requirements.txt</code>. Everything lives in one folder. <code>python coin.py reset-chain</code> starts a fresh chain and keeps your wallets. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a new chain needs 48 such coins, about 58 blocks or fifteen to thirty minutes, before its first payment: there is nothing to hide among before that. On testnet-2 your node finds the network through the seed node in <code>config.json</code>; the coins are tVESP and worth nothing.</p>
+      <p>Python 3.10 or newer and <code>python -m pip install -r requirements.txt</code>. Everything lives in one folder. <code>python coin.py reset-chain</code> starts a fresh chain and keeps your wallets. A coin can be spent, or used as a decoy, only once it is 10 blocks old, so a new chain needs 48 such coins, about 58 blocks or fifteen to thirty minutes, before its first payment: there is nothing to hide among before that. On testnet-2 your node finds the network through the seed node in <code>config.json</code>; the coins are tVESP and worth nothing.</p>
       <ol class="run">
         <li><strong>selftest.bat</strong> runs 47 checks, including that the miner's address never appears on the chain, that amounts stay sealed, that a spent output is never named, that the first broadcast of a payment is not the sender's, and that a view key can see but not spend.</li>
         <li><strong>wallet.bat</strong> creates your wallet, two secret numbers behind one password, and shows your <span class="mono">tvsp2&hellip;</span> testnet-2 address and a 55-character recovery code. Write the code on paper: it is the wallet, and anyone who sees it can spend.</li>
         <li><strong>start_node.bat</strong> starts the node, explorer and miner at <span class="mono">http://127.0.0.1:8880</span>. Every reward lands at a different one-time key.</li>
         <li><strong>explorer.bat</strong> opens the explorer. There is no address search. There is nothing to search.</li>
         <li><strong>wallet.bat</strong> again shows your balance, found by reading the blocks it has not seen yet and opening the outputs that are yours. That scan is what privacy costs.</li>
-        <li><strong>testdrive.bat</strong> runs the whole test drive by itself: two throwaway nodes, a payment each way, a search of the raw chain, five break-it attempts, about five minutes.</li>
+        <li><strong>testdrive.bat</strong> runs the whole test drive by itself: two throwaway nodes, a payment each way, a search of the raw chain, five break-it attempts, about 10 to 15 minutes.</li>
       </ol>
       <pre>python coin.py send tvspTHEIRADDRESS 12.5     # pay someone; change comes back to you unlinkably
 python coin.py wallet new-address --label carol   # one more address, for one payer; nobody can link it to the others
