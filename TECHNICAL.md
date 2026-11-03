@@ -108,7 +108,7 @@ exactly this.
 
 ## Commands and the first wait
 
-Needs Python 3.10+ and two packages: `pip install -r requirements.txt` (`cryptography`, `pynacl`).
+Needs Python 3.10+ and two packages: `python -m pip install -r requirements.txt` (`cryptography`, `pynacl`).
 Without `pynacl` everything still works on the built-in pure-Python curve, about 5x slower.
 
 | Step | Double-click | What happens |

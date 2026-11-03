@@ -92,14 +92,14 @@ few who use it stand out; on Vesper every payment is private, so everyone hides 
 - **A reward that never runs out.** No halving days: the reward slides down smoothly, then settles
   on a small amount forever, so miners are always paid to protect the chain.
 
-## Try it in five minutes
+## Try it in about 15 minutes
 
 New to all this? [START_HERE.md](START_HERE.md) walks you through it step by step.
 
 You need Python 3.10 or newer.
 
 1. Download the code: the green **Code** button above, then **Download ZIP**, and unzip it.
-2. Install the two helpers it needs: `pip install -r requirements.txt`
+2. Install the two helpers it needs: `python -m pip install -r requirements.txt`
 3. Double-click **`testdrive.bat`** (or run `python testdrive.py`).
 
 It starts two throwaway nodes on your computer, sends private payments between them, searches
