@@ -25,6 +25,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import sys
 import threading
 import time
@@ -346,8 +347,14 @@ class App:
                 st = ctx.api("GET", "/api/miner")
             own = {a for _, a, _ in wallet.addresses()}
             addr = str(st.get("address") or "")
+            try:
+                pool = ctx.api("GET", "/api/info", timeout=8).get("pool")   # present only when the node mines in the pool
+            except coin.CliError:
+                pool = None
             return {"running": bool(st.get("running")), "hashrate": st.get("hashrate", 0), "blocks_found": st.get("blocks_found", 0),
-                    "to_this_wallet": bool(st.get("running")) and addr in own, "miner_address_start": addr[:12]}
+                    "to_this_wallet": bool(st.get("running")) and addr in own, "miner_address_start": addr[:12],
+                    "pool": None if not isinstance(pool, dict) else
+                            {"shares_here": pool.get("shares_found_here"), "shares_known": pool.get("shares_known")}}
 
         raise AppError("unknown request %s %s" % (method, path))
 
@@ -527,11 +534,23 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
+class ExclusiveServer(ThreadingHTTPServer):
+    """A port only one wallet window can hold.  Python's HTTP server asks for address reuse, and on
+    Windows that lets a second program bind the same port silently: the first window then answers the
+    second one's requests and rejects its token.  Ask for the port exclusively instead."""
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):     # Windows only
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def serve(args) -> None:
     app = App(args)
     Handler.app = app
     try:
-        httpd = ThreadingHTTPServer(("127.0.0.1", app.port), Handler)
+        httpd = ExclusiveServer(("127.0.0.1", app.port), Handler)
     except OSError as exc:
         print("Cannot listen on 127.0.0.1:%d (%s). Is another wallet window already open? Close it, or run with --port 8887." % (app.port, exc))
         sys.exit(1)

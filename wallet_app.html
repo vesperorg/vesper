@@ -459,6 +459,7 @@
   function mineText(d, home) {
     if (!d.running) return home ? "Your node is not mining. Turn it on under More to earn test coins." : "Your node can mine test coins to this wallet. It uses half your processor cores while it runs.";
     var found = d.blocks_found + " block" + (d.blocks_found === 1 ? "" : "s") + " found since the node started";
+    if (d.pool && d.pool.shares_here !== null && d.pool.shares_here !== undefined) found += ", " + d.pool.shares_here + " pool share" + (d.pool.shares_here === 1 ? "" : "s") + " (in the built-in pool, coins arrive as small payouts every few minutes)";
     if (d.to_this_wallet) return "Your node is mining to this wallet: " + d.hashrate + " tries a second, " + found + (home ? "." : ". Mining uses your processor; stop it when you need the computer.");
     return "Your node is mining, but to another wallet (" + d.miner_address_start + "\u2026): " + d.hashrate + " tries a second, " + found + ". " + (home ? "Under More you can point it at this wallet." : "Start mining here to point it at this wallet instead.");
   }
