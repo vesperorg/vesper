@@ -297,7 +297,14 @@ pool along with the ordinary ones. So "the only pool" means: built into the node
 to mine together, and the only one Vesper's software, pages and community support.
 
 Not built yet: uncles (a share that loses a race earns nothing), and keeping the share chain on
-disk (a restarted member fetches it from its peers).
+disk (a restarted member fetches it from its peers). A node keeps the last four windows of shares
+in memory and forgets older ones, which nothing uses again; the big share segment a joining member
+fetches has a tight limit of its own, a few a minute per address.
+
+**A limit to fix before mainnet.** Every output stays on the ledger forever, and a node keeps the
+ledger in memory, about 0.65 kB an output. A pool block pays about 13 outputs, so at a block every
+30 s the ledger grows by about 14 million outputs, some 9 GB of memory, a year. That is fine for a
+test network for months. For mainnet the ledger has to move to disk, or a block pays fewer slots.
 
 ## Speed (this PC, libsodium backend, ring size 48)
 

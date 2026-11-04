@@ -42,7 +42,8 @@ import time
 from typing import Callable, Optional
 
 from amounts import commit
-from chain import (HEADER_KEYS, MAX_OUTPUTS, Blockchain, ChainError, block_header, canonical, compute_block_hash, compute_txid,
+from curve import Point
+from chain import (_HEX2, _HEX32, HEADER_KEYS, MAX_OUTPUTS, Blockchain, ChainError, block_header, canonical, compute_block_hash, compute_txid,
                    difficulty_target, pow_digest, step_difficulty)
 from privacy import make_auditable_output, make_outputs
 
@@ -55,6 +56,7 @@ DEFAULT_RULES = {
     "initial_share_difficulty": 64,
     "halflife_seconds": 600,          # 0 = a fixed share difficulty (tests)
     "max_main_lag": 2,                # a share may build on a main block this many blocks below the tip
+    "keep_windows": 4,                # shares kept in memory, in windows below the tip; older ones are never needed again
 }
 
 
@@ -141,8 +143,11 @@ def root_from_branch(coinbase_txid: str, branch: list[str]) -> str:
     return node.hex()
 
 
-def paid_from(window: list, stub: dict, paid_shares: int, parent: str | None, main_block: str) -> list:
-    seed = hashlib.sha256(("vesper/pool-draw|%s|%s" % (main_block, parent)).encode("ascii")).digest()
+def paid_from(window: list, stub: dict, paid_shares: int, difficulty: int, main_block: str) -> list:
+    """The seed is the main block and the share's own difficulty.  Not the parent: a miner could
+    otherwise try several parents and keep the best draw.  The difficulty binds what a share is
+    worth into its coinbase, so a peer that misstates it is caught by the draw (see join)."""
+    seed = hashlib.sha256(("vesper/pool-draw-2|%s|%d" % (main_block, difficulty)).encode("ascii")).digest()
     won = draw(window, paid_shares - 1, seed)
     return [(item[0], n) for item, n in zip(window, won) if n] + [(stub, 1 if window else paid_shares)]
 
@@ -162,6 +167,7 @@ class ShareChain:
         self.meta: dict[str, dict] = {}              # id -> {"parent", "difficulty", "timestamp", "work", "height"}
         self.tip: str | None = None
         self.lock = threading.RLock()
+        self._added_since_prune = 0
 
     # ---- what follows from the chain so far ----------------------------------------
     def difficulty_after(self, parent: str | None) -> int:
@@ -192,11 +198,11 @@ class ShareChain:
         return parent is None or (parent in self.meta and (
             self.meta[parent]["rooted"] or self.meta[parent]["depth"] >= int(self.rules["window"])))
 
-    def paid_by(self, parent: str | None, stub: dict, main_block: str) -> list:
+    def paid_by(self, parent: str | None, stub: dict, main_block: str, difficulty: int) -> list:
         """Who a share on top of `parent` and of main block `main_block` must pay: [(stub, slots)],
         the shares the draw picked, oldest first, and one slot for itself, last."""
         window = self.window(parent, int(self.rules["window"]))
-        return paid_from(window, stub, int(self.rules["paid_shares"]), parent, main_block)
+        return paid_from(window, stub, int(self.rules["paid_shares"]), difficulty, main_block)
 
     # ---- checking and adding --------------------------------------------------------
     def check(self, share: dict, history: bool = False, declared: int | None = None) -> int:
@@ -212,7 +218,13 @@ class ShareChain:
         if not isinstance(header, dict) or set(header) != set(HEADER_KEYS) or \
                 not all(type(header[k]) is int for k in ("index", "timestamp", "difficulty", "nonce")):
             raise PoolError("malformed share header")
-        if not isinstance(stub, dict) or sorted(stub) != sorted(STUB_KEYS):
+        if not isinstance(stub, dict) or sorted(stub) != sorted(STUB_KEYS) or not all(isinstance(stub[k], str) for k in STUB_KEYS) \
+                or not _HEX2.fullmatch(stub["view_tag"]) or not _HEX32.fullmatch(stub["enc_anchor"]):
+            raise PoolError("malformed payout stub")
+        try:                                          # an output no block may carry would poison every draw that picks it
+            Point.from_hex(stub["one_time_pub"])
+            Point.from_hex(stub["ephemeral_pub"])
+        except (ValueError, TypeError):
             raise PoolError("malformed payout stub")
         if parent is not None and parent not in self.meta and declared is None:
             raise ShareNotYet("unknown parent share (fetch it first)")
@@ -220,14 +232,21 @@ class ShareChain:
         index = header["index"]
         if index < 1:
             raise PoolError("malformed share header")
+        if header["timestamp"] > time.time() + chain.max_future_seconds:
+            raise ShareNotYet("the share's time is in the future")
+        if parent in self.meta and header["timestamp"] < self.meta[parent]["timestamp"]:
+            raise PoolError("a share cannot be older than the share it builds on")
         with chain.lock:
-            if not history:
-                if index > chain.height + 1:
-                    raise ShareNotYet("the share builds on a main block this node does not have yet")
-                if index < chain.height + 1 - int(self.rules["max_main_lag"]):
-                    raise ShareNotYet("the share builds on a main block that is too old")
-                if chain.blocks.hash_at(index - 1) != header["previous_hash"]:
-                    raise ShareNotYet("the share builds on a block that is not on this node's chain")
+            if index > chain.height + 1:
+                raise ShareNotYet("the share builds on a main block this node does not have yet")
+            lag = int(self.rules["max_main_lag"]) if not history else max(720, 2 * int(self.rules["window"]))   # 6 hours of blocks
+            if index < chain.height + 1 - lag:
+                raise ShareNotYet("the share builds on a main block that is too old")
+            on_chain = chain.blocks.hash_at(index - 1) == header["previous_hash"]
+            if not history and not on_chain:
+                raise ShareNotYet("the share builds on a block that is not on this node's chain")
+            if on_chain and header["difficulty"] != chain.expected_difficulty(index, chain.blocks):
+                raise PoolError("the share's block has the wrong difficulty")
             reward, fund_due = chain.reward_at(index), chain.dev_fund_at(index)
         # its coinbase is in the block it would be
         if not isinstance(coinbase, dict) or coinbase.get("type") != "coinbase" or coinbase.get("height") != index:
@@ -262,9 +281,16 @@ class ShareChain:
             raise PoolError("malformed coinbase amounts")
         if total < reward:
             raise PoolError("the coinbase pays less than the block reward")
+        if not 1 <= len(pool_outputs) <= int(self.rules["paid_shares"]) or \
+                {k: pool_outputs[-1].get(k) for k in STUB_KEYS} != stub:
+            raise PoolError("the coinbase does not end with the share's own payout")
+        try:
+            chain.validate_coinbase(coinbase, index, total - reward)
+        except ChainError as exc:
+            raise PoolError("the share's coinbase is not one a block may carry: %s" % exc)
         if not self.draw_checkable(parent):
             return difficulty                         # joined part way down: its proof of work is all there is to go on
-        expected = pool_coinbase(self.paid_by(parent, stub, header["previous_hash"]), total, index, chain.prefix)["outputs"]
+        expected = pool_coinbase(self.paid_by(parent, stub, header["previous_hash"], difficulty), total, index, chain.prefix)["outputs"]
         if len(expected) != len(pool_outputs) or any(
                 {k: o.get(k) for k in STUB_KEYS + ("index", "amount", "commitment")} != {k: e[k] for k in STUB_KEYS + ("index", "amount", "commitment")}
                 for o, e in zip(pool_outputs, expected)):
@@ -296,10 +322,29 @@ class ShareChain:
                                    "depth": (above["depth"] + 1) if above else 1,
                                    "rooted": above["rooted"] if above else parent is None}
             best = self.meta[self.tip]["work"] if self.tip else -1
-            if work > best or (work == best and share_id < self.tip):     # a tie: every member picks the same one
+            new_tip = work > best                     # a tie keeps the first seen: a sibling mined later cannot take the tip
+            if new_tip:
                 self.tip = share_id
-                return True
-            return False
+            self._added_since_prune += 1
+            if self._added_since_prune >= 256:
+                self.prune()
+            return new_tip
+
+    def prune(self) -> int:
+        """Forget shares more than `keep_windows` windows below the tip.  A block pays only from the
+        last window, and a member joining takes two, so older shares are never used again; kept,
+        they grew the node by about 8,600 a day.  What stays still knows what it needs: a share
+        remembers how many known shares lie behind it and whether its chain reaches the start."""
+        with self.lock:
+            self._added_since_prune = 0
+            if self.tip is None:
+                return 0
+            cutoff = self.meta[self.tip]["height"] - int(self.rules["keep_windows"]) * int(self.rules["window"])
+            old = [share_id for share_id, m in self.meta.items() if m["height"] < cutoff]
+            for share_id in old:
+                del self.meta[share_id]
+                del self.shares[share_id]
+            return len(old)
 
     def segment(self, n: int) -> tuple[list[dict], list[int]]:
         """The last `n` shares of the chain ending at the tip, oldest first, and their difficulties."""
@@ -326,15 +371,27 @@ class ShareChain:
                 not all(type(d) is int and d > 0 for d in difficulties):
             return 0
         with self.lock:
-            if sum(difficulties) <= (self.meta[self.tip]["work"] if self.tip else 0):
+            before = self.meta[self.tip]["work"] if self.tip else 0
+            if sum(difficulties) <= before:
                 return 0                              # our own chain has more work behind it
-            added = 0
-            for share, difficulty in zip(shares, difficulties):
-                if isinstance(share, dict) and isinstance(share.get("header"), dict):
-                    if compute_block_hash(share["header"]) not in self.shares:
+            old_tip, added = self.tip, []
+            try:
+                for share, difficulty in zip(shares, difficulties):
+                    if not isinstance(share, dict) or not isinstance(share.get("header"), dict):
+                        raise PoolError("malformed share")
+                    share_id = compute_block_hash(share["header"])
+                    if share_id not in self.shares:
                         self.add(share, history=True, declared=difficulty)
-                        added += 1
-            return added
+                        added.append(share_id)
+                if not added or self.meta[self.tip]["work"] <= before:
+                    raise ShareNotYet("the segment does not have more work than this node's chain")
+            except PoolError:
+                for share_id in added:                # all or nothing: a lie found anywhere drops the whole segment
+                    self.shares.pop(share_id, None)
+                    self.meta.pop(share_id, None)
+                self.tip = old_tip
+                raise
+            return len(added)
 
     def status(self) -> dict:
         with self.lock:
@@ -357,10 +414,11 @@ def mine_share(sharechain: ShareChain, address: str, should_abort: Optional[Call
         parent = sharechain.tip
         stub = payout_stub(address, chain.prefix)
         window = sharechain.window(parent, int(sharechain.rules["window"]))
-        share_target = difficulty_target(sharechain.difficulty_after(parent))
+        share_difficulty = sharechain.difficulty_after(parent)
+        share_target = difficulty_target(share_difficulty)
 
     def build(height, total, fund_address, fund_amount):     # runs inside the chain's lock: takes no other lock
-        paid = paid_from(window, stub, int(sharechain.rules["paid_shares"]), parent, chain.tip["hash"])
+        paid = paid_from(window, stub, int(sharechain.rules["paid_shares"]), share_difficulty, chain.tip["hash"])
         return pool_coinbase(paid, total, height, chain.prefix, fund_address, fund_amount)
 
     version, built = chain.mempool_version, time.time()

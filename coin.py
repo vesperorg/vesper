@@ -9,6 +9,7 @@ coin.py - the Vesper command line: wallets, sending, mining, looking things up.
   python coin.py wallet addresses             your addresses
   python coin.py wallet recovery-code         show the 55-character recovery code again
   python coin.py wallet restore [--name N]    rebuild a wallet from its recovery code
+  python coin.py wallet consolidate           merge up to 32 small coins into one (pool payouts are small)
   python coin.py watch VIEWKEY.json           balance and outputs using only a view key
   python coin.py send ADDRESS AMOUNT [--fee]  pay someone (change comes back to you, unlinkably)
   python coin.py proof pay|receive TXID       prove one payment to one person;  proof check FILE
@@ -38,7 +39,8 @@ import urllib.request
 
 import socksproxy
 from curve import scalar_from_hex
-from chain import Blockchain, ChainError, build_transfer, format_units, load_config, lock_data_dir, resolve_data_dir, to_units
+from chain import (MAX_INPUTS, Blockchain, ChainError, build_transfer, fee_weight, format_units, load_config, lock_data_dir,
+                   resolve_data_dir, to_units)
 from privacy import LOOKAHEAD, is_valid_address
 from wallet import Wallet, WalletError, WalletLocked, sync_outputs
 
@@ -341,6 +343,40 @@ def cmd_wallet_new_address(ctx: Ctx, args) -> None:
     print("everyone you gave an address to, comparing notes - can tell that your addresses belong together.")
 
 
+def cmd_wallet_consolidate(ctx: Ctx, args) -> None:
+    """Merge up to 32 small coins into one, paying yourself.  A pool pays in small coins, and one
+    payment can spend at most 32 of them, so without this a member could not pay a larger amount.
+    Coins that came to one address are merged together (never coins of different addresses: two
+    payers could then guess the addresses are one wallet's)."""
+    ctx.api("GET", "/api/info", timeout=30)
+    wallet, password = open_wallet(ctx, args.name, args.password)
+    owned, tip = ctx.sync(wallet, args.name)
+    waiting = waiting_refs(tip)
+    spendable = [u for u in owned if not u["spent"] and not is_waiting(u, waiting)
+                 and u["output"]["position"] < tip["spendable_outputs"]]
+    groups: dict = {}
+    for u in spendable:
+        groups.setdefault(u.get("address", 0), []).append(u)
+    number, coins = max(groups.items(), key=lambda g: len(g[1])) if groups else (0, [])
+    if len(coins) < 2:
+        print("Nothing to merge: %d coin(s) ready to spend at one address." % len(coins))
+        return
+    chosen = sorted(coins, key=lambda u: u["amount"])[:MAX_INPUTS]
+    fee = ctx.min_fee * fee_weight(len(chosen), 2)
+    amount = sum(u["amount"] for u in chosen) - fee
+    if amount <= 0:
+        raise CliError("those coins are worth less than the fee to merge them")
+    address = dict((n, a) for n, a, _ in wallet.addresses())[number]
+    print("Merging %d small coins (%s) into one, paid to your own address #%d. Fee %s." % (
+        len(chosen), ctx.fmt(amount + fee), number, ctx.fmt(fee)))
+    args.to, args.amount, args.fee, args.password = address, format_units(amount, ctx.decimals), None, password
+    args.only = {(u["txid"], u["index"]) for u in chosen}
+    cmd_send(ctx, args)
+    left = len(coins) - len(chosen)
+    print("Done. The merged coin can be spent %d blocks after it is mined.%s" % (
+        tip.get("output_lock_blocks", 0), " %d more small coins wait: run this again then." % left if left > 1 else ""))
+
+
 def cmd_wallet_addresses(ctx: Ctx, args) -> None:
     wallet = load_wallet(ctx, args.name, args.password)
     for number, address, label in wallet.addresses():
@@ -426,6 +462,9 @@ def cmd_send(ctx: Ctx, args) -> None:
     waiting = waiting_refs(tip)
     unspent = [u for u in owned if not u["spent"]]
     spendable = [u for u in unspent if not is_waiting(u, waiting) and u["output"]["position"] < tip["spendable_outputs"]]
+    only = getattr(args, "only", None)
+    if only is not None:                       # wallet consolidate: exactly these coins
+        spendable = [u for u in spendable if (u["txid"], u["index"]) in only]
     ring_size = int(ctx.config["consensus"]["ring_size"])
     rings_path = os.path.join(ctx.data_dir, "wallets", "%s.rings" % args.name)
     rings = wallet.load_rings(rings_path)
@@ -748,7 +787,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     w = sub.add_parser("wallet", help="create / inspect wallets")
     w.add_argument("action", nargs="?", default="show",
-                   choices=["new", "show", "list", "export-view", "new-address", "addresses", "restore", "recovery-code"])
+                   choices=["new", "show", "list", "export-view", "new-address", "addresses", "restore", "recovery-code", "consolidate"])
     w.add_argument("--name", default="default")
     w.add_argument("--password")
     w.add_argument("--out")
@@ -757,7 +796,7 @@ def build_parser() -> argparse.ArgumentParser:
     w.set_defaults(func=lambda c, a: {"new": cmd_wallet_new, "show": cmd_wallet_show, "list": cmd_wallet_list,
                                       "export-view": cmd_wallet_export_view, "new-address": cmd_wallet_new_address,
                                       "addresses": cmd_wallet_addresses, "restore": cmd_wallet_restore,
-                                      "recovery-code": cmd_wallet_recovery_code}[a.action](c, a))
+                                      "recovery-code": cmd_wallet_recovery_code, "consolidate": cmd_wallet_consolidate}[a.action](c, a))
 
     p = sub.add_parser("watch", help="balance using a view-key file only")
     p.add_argument("viewkey")

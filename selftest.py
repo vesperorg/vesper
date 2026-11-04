@@ -1898,6 +1898,27 @@ def test_a_pool_with_no_operator_pays_every_member():
     joiner = ShareChain(moving, rules)
     assert joiner.join(*fast.segment(13)) == 13 and joiner.tip == fast.tip
     fast.check(mine_share(joiner, Wallet.generate(PREFIX).address)[0])
+    # a peer that understates the first difficulties is caught by the draw, and the whole segment goes
+    shares_, difficulties_ = fast.segment(13)
+    liar = ShareChain(moving, rules)
+    try:
+        liar.join(shares_, [1, 1] + difficulties_[2:])
+        raise AssertionError("a segment with understated difficulties was taken")
+    except PoolError:
+        pass
+    assert not liar.shares and liar.tip is None, "all or nothing"
+    # a payout stub no block may carry is refused before it can poison a draw
+    good, _ = mine_share(fast, Wallet.generate(PREFIX).address)
+    for field, junk in (("one_time_pub", "zz"), ("view_tag", "xyz"), ("enc_anchor", "00")):
+        try:
+            fast.check(dict(good, stub=dict(good["stub"], **{field: junk})))
+            raise AssertionError("a malformed stub was accepted")
+        except PoolError as exc:
+            assert "stub" in str(exc), str(exc)
+    fast.rules["keep_windows"] = 1                              # old shares are forgotten, the chain carries on
+    assert fast.prune() == 14 - 7 and len(fast.shares) == 7
+    after = mine_share(fast, Wallet.generate(PREFIX).address)[0]
+    assert fast.add(after) and fast.tip == compute_block_hash(after["header"]), "a pruned chain still grows"
     c = new_chain(config=config)
     members = {name: Wallet.generate(PREFIX) for name in ("ana", "ben", "cal")}
     shares = ShareChain(c, {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4, "halflife_seconds": 0})
@@ -1926,7 +1947,7 @@ def test_a_pool_with_no_operator_pays_every_member():
     assert tx["txid"] in c.known_txids and balance(c, carol) == coins("5"), "a pool payout must be spendable"
     share, _ = mine_share(shares, members["ana"].address)
     forged_stub = dict(share["stub"], view_tag="00" if share["stub"]["view_tag"] != "00" else "01")
-    for bad, word in ((dict(share, stub=forged_stub), "draw picked"), (dict(share, parent="ab" * 32), "unknown parent")):
+    for bad, word in ((dict(share, stub=forged_stub), "own payout"), (dict(share, parent="ab" * 32), "unknown parent")):
         try:
             shares.check(bad)
             raise AssertionError("a bad share was accepted")
@@ -1984,7 +2005,7 @@ def test_a_pool_with_no_operator_pays_every_member():
             assert late.receive_shares(shares[-12:], difficulties[-12:])["added"] == 0, "nothing new"
             assert late.sharechain.join(shares[:6], difficulties[:6]) == 0, "a segment shorter than a window is no way in"
             lower = dict(zip(("shares", "difficulties"), home.sharechain.segment(24)))
-            expect_error(lambda: ShareChain(new_chain(config=config), {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4,
+            expect_error(lambda: ShareChain(home.chain, {"window": 12, "paid_shares": 15, "initial_share_difficulty": 4,
                                                                        "halflife_seconds": 0}).join(lower["shares"], [10 ** 9] * 24), "not enough work")
             # and what it mines on that chain is good on everyone else's: the draw comes out the same
             late.chain = home.chain

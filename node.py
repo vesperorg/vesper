@@ -50,7 +50,7 @@ from privacy import is_valid_address
 from relay import LOCAL, BanList, RateLimiter, StemRouter
 from wallet import Wallet
 
-VERSION = "0.10.1"
+VERSION = "0.11.0"
 PEERS_FILE = "peers.json"
 SYNC_BATCH = 100
 BRANCH_HOLD_SECONDS = 120              # a branch handed over in batches is forgotten if the next batch is this late
@@ -649,6 +649,12 @@ class Node:
 
     # ---- the pool: shares in and out -------------------------------------------------
     def on_share_mined(self, share: dict, block: dict | None) -> None:
+        if block is not None:                             # the block first: it counts whatever becomes of its share
+            try:
+                self.chain.add_block(block)
+                self.on_block_mined(block)
+            except ChainError as exc:
+                log.info("pool block %d came too late: %s", block["index"], exc)
         try:
             self.sharechain.add(share)
         except PoolError as exc:                          # the share chain moved while it was being mined
@@ -658,12 +664,6 @@ class Node:
         log.info("SHARE %d  difficulty %d  pays %d share(s)%s", self.sharechain.meta[compute_block_hash(share["header"])]["height"],
                  self.sharechain.meta[compute_block_hash(share["header"])]["difficulty"], len(share["coinbase"]["outputs"]),
                  "  - and it is a BLOCK" if block else "")
-        if block is not None:                             # the block first: a share is only placed on blocks a peer has
-            try:
-                self.chain.add_block(block)
-                self.on_block_mined(block)
-            except ChainError as exc:
-                log.info("pool block %d came too late: %s", block["index"], exc)
         for peer in list(self.peers):
             self.spawn(self._push_share, peer, share)
 
@@ -675,7 +675,7 @@ class Node:
         except Exception as exc:
             if isinstance(exc, ShareNotYet) or "409" in str(exc):
                 try:
-                    for n in (30, 2 * int(self.sharechain.rules["window"])):   # a few may do; a member far behind needs two windows
+                    for n in (min(30, 2 * int(self.sharechain.rules["window"])), 2 * int(self.sharechain.rules["window"])):   # a few may do; a member far behind needs two windows
                         shares, difficulties = self.sharechain.segment(n)
                         answer = self._request(peer, "POST", "/api/pool/shares", {"shares": shares, "difficulties": difficulties}, 120)
                         if answer.get("added"):
@@ -728,11 +728,24 @@ class Node:
         return {"added": added, "tip": self.sharechain.tip}
 
     def sync_shares(self, peer: str) -> None:
+        """Both directions, as with blocks: fetch what the peer has that we lack, and hand over what we
+        have that it lacks (a member behind a router cannot be fetched from, and a share it pushed may
+        have been lost to a timeout)."""
         if self.sharechain is None:
             return
         try:
             tip = self._get(peer, "/api/pool", timeout=30).get("tip")
-            for limit in (30, 2 * int(self.sharechain.rules["window"])):     # a few may do; joining takes two windows
+            with self.sharechain.lock:
+                ours = self.sharechain.tip
+                behind = ours and tip != ours and (not tip or (tip in self.sharechain.meta and
+                                                   self.sharechain.meta[tip]["work"] < self.sharechain.meta[ours]["work"]))
+            if behind:
+                for n in (min(30, 2 * int(self.sharechain.rules["window"])), 2 * int(self.sharechain.rules["window"])):
+                    shares, difficulties = self.sharechain.segment(n)
+                    if self._request(peer, "POST", "/api/pool/shares", {"shares": shares, "difficulties": difficulties}, 120).get("added"):
+                        break
+                return
+            for limit in (min(30, 2 * int(self.sharechain.rules["window"])), 2 * int(self.sharechain.rules["window"])):     # a few may do; joining takes two windows
                 if not tip or tip in self.sharechain.meta:
                     return
                 got = self._get(peer, "/api/pool/chain?limit=%d" % limit, timeout=120)
@@ -986,7 +999,6 @@ class Node:
 
     def serve(self, auto_mine: bool) -> None:
         Handler.node = self
-        CappedServer.allow_reuse_address = True
         try:
             server = CappedServer((self.host, self.port), Handler)
         except OSError as exc:
@@ -1051,6 +1063,12 @@ class CappedServer(ThreadingHTTPServer):
 
     daemon_threads = True
     request_queue_size = 64        # connections waiting to be accepted; Windows resets new ones when this is full
+    allow_reuse_address = os.name != "nt"    # on Windows, address reuse would let a second node share the port
+
+    def server_bind(self):
+        if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)    # one node per port, for certain
+        super().server_bind()
     exempt = LOOPBACK
     max_per_address = MAX_PER_ADDRESS
 
@@ -1176,7 +1194,7 @@ class Handler(BaseHTTPRequestHandler):
         node, chain = self.node, self.node.chain
         try:
             local = self._guard()
-            node.admit(self.client_address[0], "scan" if parts[1:2] == ["scan"] else "read", local)
+            node.admit(self.client_address[0], "scan" if parts[1:2] == ["scan"] else "bulk" if parts[1:3] == ["pool", "chain"] else "read", local)
             if not parts:
                 return self._html(node.dashboard_html())
             if parts == ["favicon.ico"]:
@@ -1265,7 +1283,8 @@ class Handler(BaseHTTPRequestHandler):
             control = route in (["mine"], ["miner", "start"], ["miner", "stop"])
             local = self._guard(control)
             client_ip = self.client_address[0]
-            kind = "tx" if route[:1] == ["tx"] else "block" if route in (["block"], ["branch"]) or route[:1] == ["pool"] else "lookup" if route[:1] == ["outputs"] else "read"
+            kind = ("tx" if route[:1] == ["tx"] else "bulk" if route == ["pool", "shares"] else "block" if route in (["block"], ["branch"])
+                    or route[:1] == ["pool"] else "lookup" if route[:1] == ["outputs"] else "read")
             node.admit(client_ip, kind, local)
             body = self._body()
             if not isinstance(body, dict):
@@ -1306,7 +1325,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(node.receive_shares(body.get("shares"), body.get("difficulties")))
                 except ShareNotYet as exc:            # a difference of timing: being ahead of us is not cheating
                     return self._error(409, str(exc))
-                except PoolError:
+                except PoolError as exc:
+                    log.info("refused shares from %s: %s", client_ip, exc)
                     node.penalise(client_ip, 20, local, "shares that break the pool's rules")
                     raise
             if route == ["branch"]:                   # a peer we cannot reach hands us its side of the chain

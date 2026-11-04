@@ -118,6 +118,7 @@ class RateLimiter:
         "lookup": (5.0, 100),       # ring members for a wallet
         "scan": (5.0, 200),         # wallet sync pages
         "read": (20.0, 400),        # everything else that only reads
+        "bulk": (0.2, 6),           # the pool's share segment, megabytes each: a joining member needs one or two
     }
 
     MAX_TRACKED = 50_000            # buckets remembered at most; a full bucket costs nothing to forget

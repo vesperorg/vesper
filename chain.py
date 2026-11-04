@@ -430,7 +430,8 @@ def build_transfer(keys, owned: list, payments: list, fee: int | None, prefix: s
     if not chosen or total_in < total_out + fee:
         raise ValueError("insufficient funds: have %s, need %s (amount + fee)" % (fmt(total_in), fmt(total_out + fee)))
     if len(chosen) > MAX_INPUTS:
-        raise ValueError("too many small outputs to spend at once; consolidate first")
+        raise ValueError("that needs %d of your coins, and one payment can spend at most %d. Merge small coins first "
+                         "(python coin.py wallet consolidate), or pay in parts" % (len(chosen), MAX_INPUTS))
     if fee < min_fee * fee_weight(len(chosen), n_outputs):
         raise ValueError("fee too low: %d input(s) and %d output(s) need at least %s"
                          % (len(chosen), n_outputs, fmt(min_fee * fee_weight(len(chosen), n_outputs))))
