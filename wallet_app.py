@@ -253,6 +253,9 @@ class App:
         if method == "POST" and path == "/app/send":
             return self.send(body)
 
+        if method == "POST" and path == "/app/consolidate":
+            return self.consolidate()
+
         if method == "GET" and path == "/app/history":
             wallet = s.current()
             owned = s.last_owned
@@ -394,19 +397,50 @@ class App:
         checked = self.check_payment(body)
         if checked["own_address"] and not body.get("allow_self"):
             raise AppError("that is one of your own addresses; paying yourself only costs the fee")
+        return self._transfer(checked["to"], checked["amount_units"])
+
+    def consolidate(self) -> dict:
+        """Merge up to 32 small coins into one, paid to yourself, as `coin.py wallet consolidate` does.
+        A pool pays in small coins and one payment can spend at most 32.  Only coins that came to one
+        address are merged together, never coins of different addresses."""
+        wallet = self.session.current()
+        owned, tip, _ = self.synced()
+        waiting = coin.waiting_refs(tip)
+        groups: dict = {}
+        for u in owned:
+            if not u["spent"] and not coin.is_waiting(u, waiting) and u["output"]["position"] < tip["spendable_outputs"]:
+                groups.setdefault(u.get("address", 0), []).append(u)
+        number, coins = max(groups.items(), key=lambda g: len(g[1])) if groups else (0, [])
+        if len(coins) < 2:
+            raise AppError("nothing to merge: %d coin(s) ready to spend at one address" % len(coins))
+        chosen = sorted(coins, key=lambda u: u["amount"])[:coin.MAX_INPUTS]
+        fee = self.ctx.min_fee * coin.fee_weight(len(chosen), 2)
+        amount = sum(u["amount"] for u in chosen) - fee
+        if amount <= 0:
+            raise AppError("those coins are worth less than the fee to merge them")
+        address = dict((n, a) for n, a, _ in wallet.addresses())[number]
+        done = self._transfer(address, amount, only={(u["txid"], u["index"]) for u in chosen}, fee=fee)
+        done.update(merged=len(chosen), address_number=number, left=len(coins) - len(chosen),
+                    lock_blocks=tip.get("output_lock_blocks", 0))
+        return done
+
+    def _transfer(self, to: str, amount_units: int, only=None, fee=None) -> dict:
+        ctx = self.ctx
         wallet = self.session.current()
         name = self.session.name
         owned, tip, _ = self.synced()
         waiting = coin.waiting_refs(tip)
         unspent = [u for u in owned if not u["spent"]]
         spendable = [u for u in unspent if not coin.is_waiting(u, waiting) and u["output"]["position"] < tip["spendable_outputs"]]
+        if only is not None:                       # consolidate: exactly these coins
+            spendable = [u for u in spendable if (u["txid"], u["index"]) in only]
         ring_size = int(ctx.config["consensus"]["ring_size"])
         rings_path = os.path.join(ctx.data_dir, "wallets", "%s.rings" % name)
         rings = wallet.load_rings(rings_path)
         proof_secrets: list = []
         started = time.time()
         try:
-            tx = build_transfer(wallet.keys, spendable, [(checked["to"], checked["amount_units"])], None, ctx.prefix,
+            tx = build_transfer(wallet.keys, spendable, [(to, amount_units)], fee, ctx.prefix,
                                 coin.NodeRings(ctx, tip["spendable_outputs"], tip), ring_size, min_fee=ctx.min_fee,
                                 known_rings=rings, fmt=ctx.fmt, sent=proof_secrets)
         except ValueError as exc:
@@ -415,6 +449,10 @@ class App:
                 raise AppError("%s. Another %s is yours but cannot be spent yet: it is less than %d blocks old, or already in a "
                                "payment that is waiting to be mined. Try again in a few minutes."
                                % (exc, self.fmt(held_back), tip.get("output_lock_blocks", 0)))
+            if "consolidate" in str(exc):
+                raise AppError("this payment would need more than %d of your coins, and one payment can spend at most %d. "
+                               "Under More, press Merge small coins, wait for it to be mined, then send again (or send in parts)"
+                               % (coin.MAX_INPUTS, coin.MAX_INPUTS))
             raise AppError(str(exc))
         built = time.time() - started
         used = {i["key_image"] for i in tx["inputs"] if "key_image" in i}
@@ -426,7 +464,7 @@ class App:
         log[tx["txid"]] = proof_secrets
         wallet.save_sent(sent_path, log)
         self.session.last_owned = None            # the balance changed; read it again next time
-        return {"txid": tx["txid"], "amount": checked["amount"], "fee": self.fmt(tx["fee"]), "to": checked["to"],
+        return {"txid": tx["txid"], "amount": self.fmt(amount_units), "fee": self.fmt(tx["fee"]), "to": to,
                 "inputs": len(tx["inputs"]), "outputs": len(tx["outputs"]), "ring_size": ring_size,
                 "seconds": round(built, 2), "relay": sent.get("relay"), "mixed_addresses": mixed if len(mixed) > 1 else []}
 

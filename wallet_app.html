@@ -232,6 +232,7 @@
       <button class="danger" onclick="lockWallet()">Lock the wallet</button>
     </div>
     <div class="note small" style="margin-top:18px"><b>Mining to this wallet.</b> <span id="mine-text">Your node can mine test coins to this wallet.</span><div class="row"><button id="mine-btn" onclick="toggleMine()">Start mining</button></div></div>
+    <div class="note small"><b>Merge small coins.</b> <span id="merge-text">The pool pays in small coins, about 0.29 tVESP each, and one payment can spend at most 32 of them. Merging pays up to 32 of your smallest coins into one, to your own address, for the usual small fee.</span><div class="row"><button id="merge-btn" onclick="mergeCoins()">Merge small coins</button></div></div>
     <div class="err" id="more-err"></div>
     <p class="muted small" style="margin-top:14px">Node: <span class="mono" id="more-node"></span></p>
   </section>
@@ -467,6 +468,14 @@
     try { var d = await api("POST", "/app/mine", { action: "status" }); state.mining = d.running && d.to_this_wallet; $("mine-btn").textContent = state.mining ? "Stop mining" : (d.running ? "Mine to this wallet instead" : "Start mining"); $("mine-text").textContent = mineText(d, false); }
     catch (e) { $("mine-text").textContent = e.message; }
   }
+  window.mergeCoins = async function () {
+    err("more-err", ""); busy("merge-btn", true); $("merge-btn").textContent = "Sealing, proving and signing…";
+    try {
+      var d = await api("POST", "/app/consolidate", {});
+      $("merge-text").textContent = "Merged " + d.merged + " coins into one of " + d.amount + " (fee " + d.fee + "), paid to your own address" + (d.address_number ? " #" + d.address_number : "") + ". It can be spent " + d.lock_blocks + " blocks after it is mined." + (d.left > 1 ? " " + d.left + " more small coins wait: merge again once this one is mined." : "");
+    } catch (e) { err("more-err", e.message); }
+    busy("merge-btn", false); $("merge-btn").textContent = "Merge small coins";
+  };
   window.toggleMine = async function () { err("more-err", ""); try { await api("POST", "/app/mine", { action: state.mining ? "stop" : "start" }); refreshMine(); } catch (e) { err("more-err", e.message); } };
 
   window.makeProof = async function (kind) {

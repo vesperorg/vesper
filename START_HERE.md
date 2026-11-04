@@ -89,6 +89,11 @@ coin) and that your node handed the payment quietly to one peer instead of annou
 you their own address with `python coin.py wallet new-address --label NAME`; nobody can tell the
 addresses belong together.
 
+The pool pays in small coins, about 0.29 tVESP each, and one payment can spend at most 32 of
+them. If a payment says it needs more, merge them first: `python coin.py wallet consolidate`, or
+**Merge small coins** under More in the wallet app. It pays up to 32 of your smallest coins into
+one, to your own address; run it again once that is mined if more are waiting.
+
 ## 8. Try to break it
 
 Every weakness we know of is listed at https://vesperorg.github.io/vesper/breaking.html. The
