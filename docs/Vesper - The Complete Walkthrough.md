@@ -8,7 +8,7 @@ This is the complete picture of Vesper as it stands on 18 October 2026, the day 
 
 ## 1.1 What exists
 
-- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 47-check self-test that passes (node v0.10.0).
+- A working private cryptocurrency, in Python with libsodium doing the curve arithmetic, in `~/projects/vesper` and public on GitHub under the Vesper organisation. It has a node with an explorer, a command-line wallet, a peer network, a multi-core miner, a one-click test drive, and a 47-check self-test that passes (node v0.11.0).
 - Testnet-1, decided 18 October 2026: a public test network with test coins (tVESP, addresses start `tvsp2`, no value ever), ring size 48 (raised from 32 on 19 October, three times Monero's), a genesis block tied to the newest Bitcoin block at launch, and a seed node on a rented server (kit in `deploy/`).
 - Four privacy layers built and tested: hidden receivers (stealth addresses, as many per wallet as you like, and view keys), hidden amounts (commitments and one range proof per payment), hidden senders (rings of 48 with decoys drawn from measured spending, and key images), and network privacy (a payment travels node to node before any node broadcasts it, with the remaining leak measured by `leaktest.py` rather than claimed away).
 - Payment proofs, wallet recovery codes, Tor through one flag, per-address limits and a peer table built for strangers.
